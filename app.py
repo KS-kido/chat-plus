@@ -32,7 +32,7 @@ class Message(db.Model):
 with app.app_context():
     try:
         # 【重要】古い不完全なテーブルを一度確実に消去
-        db.drop_all() 
+        #db.drop_all()
         db.create_all()
         print("Database re-initialized.")
     except Exception as e:
@@ -48,5 +48,5 @@ def index():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    # 標準の threading モードで起動
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    # allow_unsafe_werkzeug=True を追加して、開発用サーバーでの起動を許可する
+    socketio.run(app, host='0.0.0.0', port=port, debug=True, allow_unsafe_werkzeug=True)
