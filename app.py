@@ -24,6 +24,13 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+# --- こ起動時にテーブルを自動作成する魔法のコード ---
+with app.app_context():
+    try:
+        db.create_all()
+        print("Database tables created or updated.")
+    except Exception as e:
+        print(f"Database error: {e}")
 
 # --- SocketIO初期化（ここがポイント） ---
 # async_modeを明示的に指定します
