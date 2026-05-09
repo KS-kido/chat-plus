@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!-- モバイル向け設定：ズーム禁止でアプリ感を出す -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Chat</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        :root {
+            --line-blue: #7494C0;
+            --line-green: #85E249;
+            --header-dark: #35495e;
+            --bg-gray: #f8f8f8;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* ブラウザ全体のスクロールを禁止 */
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+        }
+
+        /* アプリ全体のコンテナ：上下に分ける */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh; /* 動的ビューポート：キーボードを考慮 */
+            background-color: var(--line-blue);
+        }
+
+        /* ヘッダー */
+        .header {
+            background: var(--header-dark);
+            color: white;
+            padding: env(safe-area-inset-top) 15px 10px 15px; /* iPhoneのノッチ対策 */
+            display: flex;
+            align-items: center;
+            height: auto;
+            min-height: 50px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: white;
+            font-size: 20px;
+            margin-right: 15px;
+            padding: 5px;
+        }
+
+        /* メッセージエリア */
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            -webkit-overflow-scrolling: touch; /* スムーズスクロール */
+            overscroll-behavior-y: contain; /* 引っ張って更新を防止 */
+        }
+
+        /* 吹き出し共通 */
+        .msg-box {
+            margin-bottom: 12px;
+            max-width: 80%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .text {
+            padding: 10px 14px;
+            font-size: 16px;
+            line-height: 1.4;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        /* 相手のメッセージ（左） */
+        .other-msg {
+            align-self: flex-start;
+        }
+
+            .other-msg .text {
+                background: white;
+                border-radius: 18px 18px 18px 4px;
+            }
+
+            .other-msg .username {
+                font-size: 11px;
+                color: white;
+                margin-bottom: 3px;
+                margin-left: 5px;
+            }
+
+        /* 自分のメッセージ（右） */
+        .my-msg {
+            align-self: flex-end;
+        }
+
+            .my-msg .text {
+                background: var(--line-green);
+                border-radius: 18px 18px 4px 18px;
+            }
+
+            .my-msg .username {
+                display: none;
+            }
+
+        /* 入力エリア */
+        .input-area {
+            background: white;
+            padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+            display: flex;
+            align-items: center;
+            border-top: 1px solid #ddd;
+        }
+
+        #input_msg {
+            flex: 1;
+            border: 1px solid #eee;
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .send-btn {
+            color: #007aff;
+            font-weight: bold;
+            padding: 0 15px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="header">
+            <a href="{{ url_for('chat_list') }}" class="back-btn">＜</a>
+            <span><b>{{ room_name }}</b></span>
+        </div>
+
+        <div id="messages">
+            {% for msg in history %}
+            <div class="msg-box {{ 'my-msg' if msg.username == username else 'other-msg' }}">
+                <span class="username">{{ msg.username }}</span>
+                <div class="text">{{ msg.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="input_msg" placeholder="メッセージ" autocomplete="off">
+            <button class="send-btn" onclick="send()">送信</button>
+        </div>
+    </div>
+
+    <script>
+    const socket = io();
+    const myName = "{{ username }}";
+    const currentRoom = "{{ room_name }}";
+
+    socket.on('connect', () => {
+        socket.emit('join', { room: currentRoom });
+    });
+
+    socket.on('message_from_server', function(data) {
+        const msgDiv = document.getElementById('messages');
+        const box = document.createElement('div');
+        const isMine = (data.username === myName);
+        box.className = 'msg-box ' + (isMine ? 'my-msg' : 'other-msg');
+        box.innerHTML = `<span class="username">${data.username}</span><div class="text">${data.msg}</div>`;
+        msgDiv.appendChild(box);
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+    });
+
+    function send() {
+        const input = document.getElementById('input_msg');
+        if (input.value.trim() !== "") {
+            socket.emit('message_from_client', {
+                msg: input.value,
+                room: currentRoom
+            });
+            input.value = '';
+        }
+    }
+
+    // キーボードが出た時のスクロール対応
+    document.getElementById('input_msg').addEventListener('focus', () => {
+        setTimeout(() => {
+            const msgDiv = document.getElementById('messages');
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+        }, 300);
+    });
+
+    document.getElementById('input_msg').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') send();
+    });
+
+    window.onload = function() {
+        const msgDiv = document.getElementById('messages');
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+    };
+    </script>
+
+</body>
+</html>
