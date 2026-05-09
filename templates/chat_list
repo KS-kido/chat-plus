@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!-- スマホ向け最適化設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>トーク一覧</title>
+    <style>
+        :root {
+            --header-dark: #35495e;
+            --bg-gray: #ffffff;
+            --border-color: #efefef;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* 全体スクロールを禁止 */
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+            background-color: var(--bg-gray);
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+        }
+
+        /* ヘッダー：アプリのタイトルバー */
+        .header {
+            background: var(--header-dark);
+            color: white;
+            padding: env(safe-area-inset-top) 15px 10px 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 50px;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        /* リストエリア：ここだけスクロール */
+        .user-list {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .user-item {
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+
+            .user-item a {
+                display: flex;
+                align-items: center;
+                padding: 15px;
+                text-decoration: none;
+                color: #333;
+            }
+
+            .user-item:active {
+                background-color: #f0f0f0; /* タップした時のフィードバック */
+            }
+
+        /* アイコンの代わり（丸い円） */
+        .user-icon {
+            width: 45px;
+            height: 45px;
+            background-color: #ccc;
+            border-radius: 50%;
+            margin-right: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .user-status {
+            font-size: 13px;
+            color: #888;
+        }
+
+        /* フッター：ログアウトなど */
+        .footer {
+            padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            background: #fafafa;
+        }
+
+        .logout-link {
+            font-size: 13px;
+            color: #999;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="header">
+            トーク
+        </div>
+
+        <div class="user-list">
+            {% for user in users %}
+            <div class="user-item">
+                <a href="{{ url_for('direct_chat', target_user=user.username) }}">
+                    <div class="user-icon">👤</div>
+                    <div class="user-info">
+                        <div class="user-name">{{ user.username }}</div>
+                        <div class="user-status">メッセージを送る</div>
+                    </div>
+                    <div style="color: #ccc;">＞</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">ログアウト</a>
+        </div>
+    </div>
+
+</body>
+</html>
