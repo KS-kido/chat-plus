@@ -27,6 +27,8 @@ db = SQLAlchemy(app)
 # --- こ起動時にテーブルを自動作成する魔法のコード ---
 with app.app_context():
     try:
+        # 【重要】今回だけこれを有効にして、古い不完全なテーブルを削除します
+        db.drop_all()
         db.create_all()
         print("Database tables created or updated.")
     except Exception as e:
