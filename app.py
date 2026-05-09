@@ -62,4 +62,6 @@ def handle_message(data):
     emit('message_from_server', {'username': username, 'msg': msg_content}, room=room)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # Renderでは環境変数 PORT が指定されるため、それに合わせる
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
