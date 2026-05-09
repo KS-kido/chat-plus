@@ -32,7 +32,7 @@ class Message(db.Model):
 with app.app_context():
     try:
         # 【重要】古い不完全なテーブルを一度確実に消去
-        #db.drop_all()
+        db.drop_all()
         db.create_all()
         print("Database re-initialized.")
     except Exception as e:
