@@ -4,22 +4,29 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!' # 本来はランダムな文字列が望ましいです
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SECRET_KEY'] = 'secret!'
 
-# --- データベース設定（二刀流） ---
+# --- DB設定（二刀流） ---
+# --- DB設定 ---
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
+    # Render用（PostgreSQL）
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
+    # ローカル用（SQLite）: 絶対パスで chat.db を指定
+    # これで「app.py と同じ場所」に必ずDBが作られます
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'chat.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
 
-# --- モデル定義 ---
+# --- SocketIO初期化（ここがポイント） ---
+# async_modeを明示的に指定します
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet' if os.environ.get('DATABASE_URL') else None)
+
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room = db.Column(db.String(50), nullable=False)
@@ -29,19 +36,17 @@ class Message(db.Model):
 with app.app_context():
     db.create_all()
 
-# --- ルート設定 ---
 @app.route('/')
 def index():
-    # テスト用に決め打ちでログイン状態を作ります
-    # 本来はログイン画面から取得する値です
-    session['username'] = "User1" 
-    return render_template('index.html', room_name="Main Room", username=session['username'], history=[])
+    session['username'] = "User1" # テスト用
+    # 履歴をDBから取得して渡すように追加
+    history = Message.query.filter_by(room="Main Room").all()
+    return render_template('index.html', room_name="Main Room", username=session['username'], history=history)
 
 @app.route('/list')
 def chat_list():
-    return "Chat List Page (Coming Soon)"
+    return "Chat List Page"
 
-# --- SocketIO イベント ---
 @socketio.on('join')
 def on_join(data):
     room = data['room']
@@ -53,15 +58,14 @@ def handle_message(data):
     username = session.get('username', 'Anonymous')
     msg_content = data['msg']
 
-    # DBに保存
+    # 保存
     new_msg = Message(room=room, username=username, content=msg_content)
     db.session.add(new_msg)
     db.session.commit()
 
-    # 部屋にいる全員に送信
+    # 送信
     emit('message_from_server', {'username': username, 'msg': msg_content}, room=room)
 
 if __name__ == '__main__':
-    # Renderでは環境変数 PORT が指定されるため、それに合わせる
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    # ローカル実行時はeventletを使わずに起動
+    socketio.run(app, debug=True)
