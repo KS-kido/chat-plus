@@ -1,3 +1,5 @@
+import eventlet
+eventlet.monkey_patch()
 import os
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
@@ -67,5 +69,7 @@ def handle_message(data):
     emit('message_from_server', {'username': username, 'msg': msg_content}, room=room)
 
 if __name__ == '__main__':
-    # ローカル実行時はeventletを使わずに起動
-    socketio.run(app, debug=True)
+    # Renderが割り当てるポート番号を自動取得
+    port = int(os.environ.get("PORT", 5000))
+    # eventlet環境下でサーバーを直接起動
+    socketio.run(app, host='0.0.0.0', port=port)
