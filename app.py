@@ -28,7 +28,7 @@ db = SQLAlchemy(app)
 with app.app_context():
     try:
         # 一度全部消して作り直す（これで PostgreSQL 側の 'room' カラム不足を解消）
-        db.drop_all() 
+        #db.drop_all() 
         db.create_all()
         print("Database re-initialized successfully.")
     except Exception as e:
