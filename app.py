@@ -41,7 +41,7 @@ class Room(db.Model):
     password = db.Column(db.String(200), nullable=True) # 鍵付きルーム用
 
 with app.app_context():
-     db.drop_all() # 構造を変えた直後は一度だけこれが必要
+    db.drop_all() # 構造を変えた直後は一度だけこれが必要
     db.create_all()
 
 socketio = SocketIO(app, cors_allowed_origins="*")
