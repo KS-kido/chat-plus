@@ -171,15 +171,17 @@
         socket.emit('join', { room: currentRoom });
     });
 
-    socket.on('message_from_server', function(data) {
-        const msgDiv = document.getElementById('messages');
-        const box = document.createElement('div');
-        const isMine = (data.username === myName);
-        box.className = 'msg-box ' + (isMine ? 'my-msg' : 'other-msg');
-        box.innerHTML = `<span class="username">${data.username}</span><div class="text">${data.msg}</div>`;
-        msgDiv.appendChild(box);
-        msgDiv.scrollTop = msgDiv.scrollHeight;
-    });
+        socket.on('message_from_server', function (data) {
+            const chatLog = document.getElementById('chat-log');
+            // 名前を <a> タグで囲み、リンク先を /user/ログインID にする
+            const msgElement = `
+        <div style="margin-bottom: 8px;">
+            <a href="/user/${data.login_id}" style="font-weight:bold; text-decoration:none; color:#2c3e50;">
+                ${data.username}
+            </a>: ${data.msg}
+        </div>`;
+            chatLog.innerHTML += msgElement;
+        });
 
     function send() {
         const input = document.getElementById('input_msg');
