@@ -24,6 +24,7 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
 # --- DBを完全にクリーンにするためのブロック ---
 with app.app_context():
     try:
@@ -38,6 +39,13 @@ with app.app_context():
 # SocketIOの初期化をシンプルに（Render環境での不整合を防ぐ）
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+from werkzeug.security import generate_password_hash, check_password_hash # パスワード暗号化用
+# --- ユーザーテーブル ---
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False) # 名前は重複禁止
+    password = db.Column(db.String(200), nullable=False) # 暗号化して保存するので長めに
+# --- メッセージテーブル  ---
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room = db.Column(db.String(50), nullable=False)
@@ -47,10 +55,56 @@ class Message(db.Model):
 with app.app_context():
     db.create_all()
 
+# --- ユーザー登録 ---
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # すでに同じ名前のユーザーがいないか確認
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return "このユーザー名は既に使用されています。"
+
+        # パスワードを暗号化して保存
+        hashed_pw = generate_password_hash(password)
+        new_user = User(username=username, password=hashed_pw)
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return redirect(url_for('login')) # 登録できたらログイン画面へ
+    return render_template('signup.html')
+
+# --- ログイン ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        # ユーザーが存在し、パスワードが一致するか確認
+        if user and check_password_hash(user.password, password):
+            session['username'] = user.username # セッションに名前を保存
+            return redirect(url_for('index')) # チャット画面へ
+        
+        return "ユーザー名またはパスワードが違います。"
+    return render_template('login.html')
+
+# --- ログアウト ---
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
+
 @app.route('/')
 def index():
-    session['username'] = "User1" # テスト用
-    # 履歴をDBから取得して渡すように追加
+    # ログインしていない場合はログイン画面へ飛ばす
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
     history = Message.query.filter_by(room="Main Room").all()
     return render_template('index.html', room_name="Main Room", username=session['username'], history=history)
 
