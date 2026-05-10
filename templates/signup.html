@@ -69,7 +69,8 @@
     <div class="container">
         <h2>新規登録</h2>
         <form action="/signup" method="POST">
-            <input type="text" name="username" placeholder="ユーザー名" required>
+            <input type="text" name="login_id" placeholder="ログインID（英数字）" required>
+            <input type="text" name="display_name" placeholder="表示名（ニックネーム）" required>
             <input type="password" name="password" placeholder="パスワード" required>
             <button type="submit">登録する</button>
         </form>

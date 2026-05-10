@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>トーク一覧</title>
+
     <style>
         body {
             margin: 0;
@@ -99,7 +100,12 @@
 </head>
 <body>
 
-    <div class="header">トーク</div>
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
+        <div style="width: 40px;"></div> <span>トーク</span>
+        <a href="/user/{{ session['login_id'] }}" style="text-decoration: none; color: white; background: #555; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+            自分
+        </a>
+    </div>
 
     <div class="create-area">
         <form action="/create_room" method="POST">
