@@ -39,10 +39,13 @@ class Message(db.Model):
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
+    # パスワード列を追加（空でもOKにするため nullable=True）
+    password = db.Column(db.String(200), nullable=True)
+
 
 # 起動時にテーブルを作成（すでにある場合は何もしない）
 with app.app_context():
-    # db.drop_all() # 構造をリセットしたい時だけコメントを外す
+    db.drop_all() # 構造をリセットしたい時だけコメントを外す
     db.create_all()
 
 # --- 3. SocketIO初期化 ---
@@ -98,18 +101,38 @@ def chat_list():
 @app.route('/create_room', methods=['POST'])
 def create_room():
     room_name = request.form.get('room_name')
+    room_password = request.form.get('room_password') # 追加
+    
     if room_name and not Room.query.filter_by(name=room_name).first():
-        new_room = Room(name=room_name)
+        # パスワードがあればハッシュ化して保存、なければ None
+        hashed_pw = generate_password_hash(room_password) if room_password else None
+        new_room = Room(name=room_name, password=hashed_pw)
         db.session.add(new_room)
         db.session.commit()
     return redirect(url_for('chat_list'))
 
 # F. チャットルーム本体
-@app.route('/chat/<room_name>')
+@app.route('/chat/<room_name>', methods=['GET', 'POST'])
 def chat_room(room_name):
     if 'username' not in session:
         return redirect(url_for('login'))
-    # その部屋だけの過去ログを表示
+    
+    room = Room.query.filter_by(name=room_name).first_or_404()
+
+    # パスワードが設定されている部屋の場合
+    if room.password:
+        # POST（パスワード入力後）でない場合は入力画面を出す
+        if request.method == 'POST':
+            input_pw = request.form.get('room_password')
+            if check_password_hash(room.password, input_pw):
+                # 合っていたらチャット画面へ（本来はここで入室許可をセッションに持つのが理想）
+                pass 
+            else:
+                return "パスワードが違います。<a href='/list'>戻る</a>"
+        else:
+            # パスワード入力用の専用HTML（または簡易画面）を返す
+            return render_template('room_login.html', room_name=room_name)
+
     history = Message.query.filter_by(room=room_name).all()
     return render_template('index.html', room_name=room_name, username=session['username'], history=history)
 

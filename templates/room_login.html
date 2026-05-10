@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>入室制限 - {{ room_name }}</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        h2 { color: #35495e; font-size: 18px; }
+        p { color: #666; font-size: 14px; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #007aff; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+        .back-link { margin-top: 15px; display: block; color: #888; text-decoration: none; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>鍵付きルーム: {{ room_name }}</h2>
+        <p>この部屋に入るにはパスワードが必要です</p>
+        <form method="POST">
+            <input type="password" name="room_password" placeholder="パスワードを入力" required autofocus>
+            <button type="submit">入室する</button>
+        </form>
+        <a href="/list" class="back-link">トーク一覧に戻る</a>
+    </div>
+</body>
+</html>
