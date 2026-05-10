@@ -78,7 +78,6 @@ def handle_message(data):
     emit('message_from_server', {'username': username, 'msg': msg_content}, room=room)
 
 if __name__ == '__main__':
-    # Renderが割り当てるポート番号を自動取得
     port = int(os.environ.get("PORT", 5000))
-    # eventlet環境下でサーバーを直接起動
-    socketio.run(app, host='0.0.0.0', port=port)
+    # allow_unsafe_werkzeug=True を追加して、強制的に起動させます
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
