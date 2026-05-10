@@ -35,8 +35,8 @@ with app.app_context():
         print(f"Database error: {e}")
 
 # --- SocketIO初期化（ここがポイント） ---
-# async_modeを明示的に指定します
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet' if os.environ.get('DATABASE_URL') else None)
+# 修正後（環境に任せる）
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=None)
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
