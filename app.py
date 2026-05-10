@@ -24,19 +24,19 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-# --- こ起動時にテーブルを自動作成する魔法のコード ---
+# --- DBを完全にクリーンにするためのブロック ---
 with app.app_context():
     try:
-        # 【重要】今回だけこれを有効にして、古い不完全なテーブルを削除します
-        db.drop_all()
+        # 一度全部消して作り直す（これで PostgreSQL 側の 'room' カラム不足を解消）
+        db.drop_all() 
         db.create_all()
-        print("Database tables created or updated.")
+        print("Database re-initialized successfully.")
     except Exception as e:
-        print(f"Database error: {e}")
+        print(f"Database error during initialization: {e}")
 
 # --- SocketIO初期化（ここがポイント） ---
-# 修正後（環境に任せる）
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode=None)
+# SocketIOの初期化をシンプルに（Render環境での不整合を防ぐ）
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
