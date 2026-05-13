@@ -10,12 +10,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 
 # --- 1. データベース・パス設定 ---
-# スコープエラーを防ぐため、basedirを一番上で定義
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
-    # Render等のPostgreSQL用（URLスキームの置換とSSL接続を強制）
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -23,7 +21,6 @@ if database_url:
         "connect_args": {"sslmode": "require"}
     }
 else:
-    # ローカル開発用のSQLite設定
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'chat.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -37,20 +34,22 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # --- モデル定義 ---
-class Message(db.Model):
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    room = db.Column(db.String(50), nullable=False)
-    # 【重要】Userテーブルのlogin_idと紐付ける設定
-    login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
-    content = db.Column(db.String(500), nullable=False)
-    # これにより msg.user.display_name が使えるようになります
-    user = db.relationship('User', backref='messages')
+    login_id = db.Column(db.String(50), unique=True, nullable=False)
+    display_name = db.Column(db.String(50), nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    profile_text = db.Column(db.String(200), default="よろしくお願いします！")
+    profile_image = db.Column(db.String(100), default="default.png")
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room = db.Column(db.String(50), nullable=False)
-    login_id = db.Column(db.String(50), nullable=False)
+    # 【修正ポイント】Userテーブルのlogin_idと紐付けるためのForeignKey
+    login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
     content = db.Column(db.String(500), nullable=False)
+    
+    # 【修正ポイント】Relationshipを設定。これで msg.user.display_name が取得可能になる
     user = db.relationship('User', backref='messages')
 
 class Room(db.Model):
@@ -58,18 +57,7 @@ class Room(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=True)
 
-# アプリ起動時のDBセットアップ
-with app.app_context():
-    try:
-        # テーブルがなければ作成（カラム追加時は手動DROPが必要）
-        db.create_all() 
-        # migrationsフォルダがある場合のみ差分を適用
-        if os.path.exists(os.path.join(basedir, 'migrations')):
-            upgrade()
-    except Exception as e:
-        print(f"DB Setup Notice: {e}")
-
-# SocketIOの初期化（async_modeを明示して安定化）
+# SocketIOの初期化
 socketio = SocketIO(app, 
     cors_allowed_origins="*", 
     async_mode='threading'
@@ -155,6 +143,8 @@ def chat_room(room_name):
                 return "パスワードが違います"
         else:
             return render_template('room_login.html', room_name=room_name)
+    
+    # 履歴取得時にMessageモデルを通じてUser情報も取得される
     history = Message.query.filter_by(room=room_name).all()
     me = User.query.filter_by(login_id=session['login_id']).first()
     return render_template('index.html', room_name=room_name, display_name=me.display_name, history=history)
@@ -183,24 +173,30 @@ def on_join(data):
 @socketio.on('message_from_client')
 def handle_message(data):
     room = data['room']
-    l_id = session.get('login_id') # セッションからログインIDを取得
+    l_id = session.get('login_id')
     user = User.query.filter_by(login_id=l_id).first()
     
     new_msg = Message(room=room, login_id=l_id, content=data['msg'])
     db.session.add(new_msg)
     db.session.commit()
 
-    # emitするデータに 'login_id' を追加する
     emit('message_from_server', {
         'username': user.display_name, 
         'msg': data['msg'],
-        'login_id': l_id  # ここが重要！
+        'login_id': l_id
     }, room=room)
 
-# 起動時に一度だけDB作成を実行するようにここにまとめる
+# --- 5. 実行処理（重複エラー防止のため最下部に集約） ---
+if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
-        print("Database tables created/checked.")
+        try:
+            # テーブル作成
+            db.create_all() 
+            print("Database setup completed.")
+            if os.path.exists(os.path.join(basedir, 'migrations')):
+                upgrade()
+        except Exception as e:
+            print(f"DB Setup Notice: {e}")
 
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
