@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_migrate import Migrate  # ← 追加
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -18,9 +19,12 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'chat.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
-# --- 2. データベースモデル（ここを大改造しました） ---
+# --- 2. データベースとMigrateの初期化 ---
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)  # ← 追加
+
+# --- 2. データベースモデル） ---
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +45,7 @@ class Room(db.Model):
     password = db.Column(db.String(200), nullable=True) # 鍵付きルーム用
 
 with app.app_context():
-    db.drop_all() # 構造を変えた直後は一度だけこれが必要
+    # 最初の一回、テーブルがないときだけ自動で作る（それ以降はMigrateにお任せ）
     db.create_all()
 
 socketio = SocketIO(app, cors_allowed_origins="*")
