@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>プロフィール編集</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    <div style="margin-bottom: 20px;">
+        <label>現在のアイコン:</label><br>
+        <img src="{{ url_for('static', filename='profile_pics/' + user.profile_image) }}" 
+             style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 1px solid #ccc;">
+    </div>
+
+    <p>アイコンを変更: <input type="file" name="profile_image" accept="image/*"></p>
+    <p>表示名: <input type="text" name="display_name" value="{{ user.display_name }}" required></p>
+    <p>自己紹介:<br>
+        <textarea name="profile_text" rows="4" style="width: 100%;">{{ user.profile_text }}</textarea>
+    </p>
+    
+    <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px;">
+        変更を保存する
+    </button>
+    <a href="{{ url_for('profile', target_id=user.login_id) }}">キャンセル</a>
+</form>
+{% endblock %}

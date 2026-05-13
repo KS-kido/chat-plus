@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ user.display_name }}のプロフィール</title>
     <style>
+        /* 既存のスタイルはそのまま */
         body {
             font-family: sans-serif;
             background-color: #f0f2f5;
@@ -30,6 +31,7 @@
             height: 100px;
         }
 
+        /* アイコン部分の調整（画像を表示しやすく） */
         .icon {
             width: 100px;
             height: 100px;
@@ -42,7 +44,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden; /* 画像がはみ出ないように */
         }
+
+            .icon img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover; /* 縦横比を維持してフィット */
+            }
 
         .name {
             font-size: 24px;
@@ -59,32 +68,48 @@
             padding: 0 30px;
             color: #444;
             line-height: 1.6;
+            min-height: 50px;
         }
 
         .btn {
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 10px;
             padding: 10px 20px;
             background: #85E249;
             color: white;
             text-decoration: none;
             border-radius: 20px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
+
     <div class="card">
         <div class="bg"></div>
-        <div class="icon">{{ user.display_name[0] }}</div>
+
+        <!-- アイコン部分の修正 -->
+        <div class="icon">
+            {% if user.profile_image and user.profile_image != 'default.png' %}
+            <img src="{{ url_for('static', filename='profile_pics/' + user.profile_image) }}" alt="icon">
+            {% else %}
+            {{ user.display_name[0] }}
+            {% endif %}
+        </div>
+
         <div class="name">{{ user.display_name }}</div>
         <div class="id">@{{ user.login_id }}</div>
         <div class="bio">{{ user.profile_text }}</div>
 
-        {% if is_mine %}
-        <a href="/logout" class="btn" style="background:#e74c3c;">ログアウト</a>
-        {% else %}
-        <a href="/list" class="btn">トーク一覧に戻る</a>
-        {% endif %}
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            {% if is_mine %}
+            <!-- 自分の時だけ「編集」ボタンを出す -->
+            <a href="{{ url_for('edit_profile') }}" class="btn">プロフィールを編集</a>
+            <a href="/logout" class="btn" style="background:#e74c3c;">ログアウト</a>
+            {% else %}
+            <a href="/list" class="btn">トーク一覧に戻る</a>
+            {% endif %}
+        </div>
     </div>
 </body>
 </html>
