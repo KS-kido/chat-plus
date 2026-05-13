@@ -50,7 +50,7 @@ class Message(db.Model):
     room = db.Column(db.String(50), nullable=False)
     login_id = db.Column(db.String(50), nullable=False)
     content = db.Column(db.String(500), nullable=False)
-
+    user = db.relationship('User', backref='messages')
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
