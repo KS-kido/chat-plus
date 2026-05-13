@@ -147,16 +147,14 @@
         </div>
 
         <div id="messages">
-            <!-- 履歴の読み込み（Python側で判定） -->
             {% for msg in history %}
-            {# ここでは login_id を使って自分の発言かどうかを厳密に判定 #}
             <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
-                <span class="username">{{msg.user.display_name}}</span>
+                <!-- ここを修正！ msg.login_id ではなく msg.user.display_name にする -->
+                <span class="username">{{ msg.user.display_name }}</span>
                 <div class="text">{{ msg.content }}</div>
             </div>
             {% endfor %}
         </div>
-
         <div class="input-area">
             <input type="text" id="input_msg" placeholder="メッセージ" autocomplete="off">
             <button class="send-btn" onclick="send()">送信</button>
