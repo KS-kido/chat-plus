@@ -197,7 +197,10 @@ def handle_message(data):
         'login_id': l_id  # ここが重要！
     }, room=room)
 
-if __name__ == '__main__':
+# 起動時に一度だけDB作成を実行するようにここにまとめる
+    with app.app_context():
+        db.create_all()
+        print("Database tables created/checked.")
+
     port = int(os.environ.get("PORT", 5000))
-    # ローカル実行時は allow_unsafe_werkzeug=True が必要
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
