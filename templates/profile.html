@@ -106,6 +106,7 @@
             <!-- 自分の時だけ「編集」ボタンを出す -->
             <a href="{{ url_for('edit_profile') }}" class="btn">プロフィールを編集</a>
             <a href="/logout" class="btn" style="background:#e74c3c;">ログアウト</a>
+            <a href="/list" class="btn">トーク一覧に戻る</a>
             {% else %}
             <a href="/list" class="btn">トーク一覧に戻る</a>
             {% endif %}

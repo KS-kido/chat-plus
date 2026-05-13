@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Chat</title>
+    <title>Chat - {{ room_name }}</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         :root {
@@ -18,23 +18,21 @@
             padding: 0;
             height: 100%;
             width: 100%;
-            overflow: hidden; /* ブラウザ全体のスクロールを禁止 */
+            overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
         }
 
-        /* アプリ全体のコンテナ：上下に分ける */
         .app-container {
             display: flex;
             flex-direction: column;
-            height: 100dvh; /* 動的ビューポート：キーボードを考慮 */
+            height: 100dvh;
             background-color: var(--line-blue);
         }
 
-        /* ヘッダー */
         .header {
             background: var(--header-dark);
             color: white;
-            padding: env(safe-area-inset-top) 15px 10px 15px; /* iPhoneのノッチ対策 */
+            padding: env(safe-area-inset-top) 15px 10px 15px;
             display: flex;
             align-items: center;
             height: auto;
@@ -51,18 +49,16 @@
             padding: 5px;
         }
 
-        /* メッセージエリア */
         #messages {
             flex: 1;
             overflow-y: auto;
             padding: 15px;
             display: flex;
             flex-direction: column;
-            -webkit-overflow-scrolling: touch; /* スムーズスクロール */
-            overscroll-behavior-y: contain; /* 引っ張って更新を防止 */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
         }
 
-        /* 吹き出し共通 */
         .msg-box {
             margin-bottom: 12px;
             max-width: 80%;
@@ -78,7 +74,7 @@
             word-wrap: break-word;
         }
 
-        /* 相手のメッセージ（左） */
+        /* 相手のメッセージ */
         .other-msg {
             align-self: flex-start;
         }
@@ -93,9 +89,10 @@
                 color: white;
                 margin-bottom: 3px;
                 margin-left: 5px;
+                text-decoration: none;
             }
 
-        /* 自分のメッセージ（右） */
+        /* 自分のメッセージ */
         .my-msg {
             align-self: flex-end;
         }
@@ -109,7 +106,6 @@
                 display: none;
             }
 
-        /* 入力エリア */
         .input-area {
             background: white;
             padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
@@ -147,10 +143,12 @@
             <span><b>{{ room_name }}</b></span>
         </div>
 
+        <!-- IDは必ず 'messages' に統一 -->
         <div id="messages">
             {% for msg in history %}
-            <div class="msg-box {{ 'my-msg' if msg.username == username else 'other-msg' }}">
-                <span class="username">{{ msg.username }}</span>
+            {# display_name を表示し、ログインユーザー本人のメッセージか判定 #}
+            <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
+                <span class="username">{{ msg.login_id }}</span>
                 <div class="text">{{ msg.content }}</div>
             </div>
             {% endfor %}
@@ -164,24 +162,35 @@
 
     <script>
     const socket = io();
-    const myName = "{{ username }}";
     const currentRoom = "{{ room_name }}";
+    const myLoginId = "{{ session['login_id'] }}"; // 自分のIDを取得
 
     socket.on('connect', () => {
         socket.emit('join', { room: currentRoom });
     });
 
-        socket.on('message_from_server', function (data) {
-            const chatLog = document.getElementById('chat-log');
-            // 名前を <a> タグで囲み、リンク先を /user/ログインID にする
-            const msgElement = `
-        <div style="margin-bottom: 8px;">
-            <a href="/user/${data.login_id}" style="font-weight:bold; text-decoration:none; color:#2c3e50;">
-                ${data.username}
-            </a>: ${data.msg}
-        </div>`;
-            chatLog.innerHTML += msgElement;
-        });
+    // サーバーからメッセージを受け取った時の処理
+    socket.on('message_from_server', function (data) {
+        const msgDiv = document.getElementById('messages');
+
+        // 送信者のIDが自分かどうかでクラスを切り替え
+        // ※app.pyのemitで送信者のlogin_idを送るように修正が必要（後述）
+        const isMyMsg = (data.login_id === myLoginId);
+        const msgClass = isMyMsg ? 'my-msg' : 'other-msg';
+
+        // 吹き出しのHTML構造を作成
+        const msgElement = `
+            <div class="msg-box ${msgClass}">
+                <span class="username">${data.username}</span>
+                <div class="text">${data.msg}</div>
+            </div>`;
+
+        // messagesエリアの最後に追加
+        msgDiv.insertAdjacentHTML('beforeend', msgElement);
+
+        // 常に最新メッセージ（下部）へスクロール
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+    });
 
     function send() {
         const input = document.getElementById('input_msg');
@@ -194,24 +203,12 @@
         }
     }
 
-    // キーボードが出た時のスクロール対応
-    document.getElementById('input_msg').addEventListener('focus', () => {
-        setTimeout(() => {
-            const msgElement = `
-            <div style="margin-bottom: 10px;">
-              <a href="/user/${data.login_id}" style="text-decoration: none; font-weight: bold; color: #2c3e50;">
-                ${data.username}
-              </a>: 
-              <span>${data.msg}</span>
-            </div>`;
-            msgDiv.scrollTop = msgDiv.scrollHeight;
-        }, 300);
-    });
-
+    // Enterキー対応
     document.getElementById('input_msg').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') send();
     });
 
+    // 読み込み時に一番下へスクロール
     window.onload = function() {
         const msgDiv = document.getElementById('messages');
         msgDiv.scrollTop = msgDiv.scrollHeight;
