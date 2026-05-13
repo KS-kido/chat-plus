@@ -1,6 +1,6 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, redirect, url_for, session, flash # flashを追加from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate  # ← 追加
@@ -22,8 +22,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- 2. データベースとMigrateの初期化 ---
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)  # ← 追加
-
+migrate = Migrate(app, db)
 # --- 2. データベースモデル） ---
 
 class User(db.Model):
@@ -78,12 +77,17 @@ def login():
         l_id = request.form.get('login_id')
         pw = request.form.get('password')
         user = User.query.filter_by(login_id=l_id).first()
-        if user and check_password_hash(user.password, pw):
-            session['login_id'] = user.login_id # セッションにIDを記録
-            return redirect(url_for('chat_list'))
-        return "IDまたはパスワードが違います"
-    return render_template('login.html')
 
+        # 成功：ユーザーが存在し、パスワードが一致する場合
+        if user and check_password_hash(user.password, pw):
+            session['login_id'] = user.login_id 
+            return redirect(url_for('chat_list')) # チャット一覧へ
+        
+        # 失敗：それ以外（ここを if の外に出します）
+        flash('IDまたはパスワードが違います')
+        return redirect(url_for('login')) 
+        
+    return render_template('login.html')
 # 【トーク一覧】
 @app.route('/list')
 def chat_list():
