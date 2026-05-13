@@ -181,13 +181,19 @@ def on_join(data):
 @socketio.on('message_from_client')
 def handle_message(data):
     room = data['room']
-    l_id = session.get('login_id')
+    l_id = session.get('login_id') # セッションからログインIDを取得
     user = User.query.filter_by(login_id=l_id).first()
+    
     new_msg = Message(room=room, login_id=l_id, content=data['msg'])
     db.session.add(new_msg)
     db.session.commit()
-    # 全員にブロードキャスト（async_mode='threading'により安定化）
-    emit('message_from_server', {'username': user.display_name, 'msg': data['msg']}, room=room)
+
+    # emitするデータに 'login_id' を追加する
+    emit('message_from_server', {
+        'username': user.display_name, 
+        'msg': data['msg'],
+        'login_id': l_id  # ここが重要！
+    }, room=room)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

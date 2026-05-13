@@ -2,8 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <!-- モバイル端末での表示を最適化（iPhoneのノッチやキーボード対応） -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Chat - {{ room_name }}</title>
+    <!-- Socket.IOライブラリの読み込み -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         :root {
@@ -18,24 +20,25 @@
             padding: 0;
             height: 100%;
             width: 100%;
-            overflow: hidden;
+            overflow: hidden; /* 全体のスクロールを禁止し、メッセージエリアだけを動かす */
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
         }
 
+        /* アプリ全体のレイアウト */
         .app-container {
             display: flex;
             flex-direction: column;
-            height: 100dvh;
+            height: 100dvh; /* 動的ビューポート：スマホのキーボード表示に対応 */
             background-color: var(--line-blue);
         }
 
+        /* ヘッダーデザイン */
         .header {
             background: var(--header-dark);
             color: white;
             padding: env(safe-area-inset-top) 15px 10px 15px;
             display: flex;
             align-items: center;
-            height: auto;
             min-height: 50px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 100;
@@ -46,9 +49,9 @@
             color: white;
             font-size: 20px;
             margin-right: 15px;
-            padding: 5px;
         }
 
+        /* メッセージ表示エリア */
         #messages {
             flex: 1;
             overflow-y: auto;
@@ -56,9 +59,9 @@
             display: flex;
             flex-direction: column;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: contain;
         }
 
+        /* 吹き出しの共通設定 */
         .msg-box {
             margin-bottom: 12px;
             max-width: 80%;
@@ -70,11 +73,11 @@
             padding: 10px 14px;
             font-size: 16px;
             line-height: 1.4;
-            position: relative;
             word-wrap: break-word;
+            position: relative;
         }
 
-        /* 相手のメッセージ */
+        /* 相手のメッセージ（左側） */
         .other-msg {
             align-self: flex-start;
         }
@@ -89,10 +92,9 @@
                 color: white;
                 margin-bottom: 3px;
                 margin-left: 5px;
-                text-decoration: none;
             }
 
-        /* 自分のメッセージ */
+        /* 自分のメッセージ（右側） */
         .my-msg {
             align-self: flex-end;
         }
@@ -103,9 +105,10 @@
             }
 
             .my-msg .username {
-                display: none;
+                display: none; /* 自分の名前は表示しない */
             }
 
+        /* 入力エリア */
         .input-area {
             background: white;
             padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
@@ -143,10 +146,10 @@
             <span><b>{{ room_name }}</b></span>
         </div>
 
-        <!-- IDは必ず 'messages' に統一 -->
         <div id="messages">
+            <!-- 履歴の読み込み（Python側で判定） -->
             {% for msg in history %}
-            {# display_name を表示し、ログインユーザー本人のメッセージか判定 #}
+            {# ここでは login_id を使って自分の発言かどうかを厳密に判定 #}
             <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
                 <span class="username">{{ msg.login_id }}</span>
                 <div class="text">{{ msg.content }}</div>
@@ -163,35 +166,36 @@
     <script>
     const socket = io();
     const currentRoom = "{{ room_name }}";
-    const myLoginId = "{{ session['login_id'] }}"; // 自分のIDを取得
+    // 重要：現在ログインしている自分のIDをJS変数に保持
+    const myLoginId = "{{ session['login_id'] }}";
 
     socket.on('connect', () => {
         socket.emit('join', { room: currentRoom });
     });
 
-    // サーバーからメッセージを受け取った時の処理
+    // サーバーから新しいメッセージが届いた時の処理
     socket.on('message_from_server', function (data) {
         const msgDiv = document.getElementById('messages');
 
-        // 送信者のIDが自分かどうかでクラスを切り替え
-        // ※app.pyのemitで送信者のlogin_idを送るように修正が必要（後述）
+        // 【重要】届いたデータの login_id と 自分のID を比較して左右を決定
         const isMyMsg = (data.login_id === myLoginId);
         const msgClass = isMyMsg ? 'my-msg' : 'other-msg';
 
-        // 吹き出しのHTML構造を作成
+        // 吹き出しのHTMLを組み立て（Jinja2のループ内と同じ構造にする）
         const msgElement = `
             <div class="msg-box ${msgClass}">
                 <span class="username">${data.username}</span>
                 <div class="text">${data.msg}</div>
             </div>`;
 
-        // messagesエリアの最後に追加
+        // エリアの最後に追加
         msgDiv.insertAdjacentHTML('beforeend', msgElement);
 
-        // 常に最新メッセージ（下部）へスクロール
+        // 送信・受信時に自動で一番下までスクロール
         msgDiv.scrollTop = msgDiv.scrollHeight;
     });
 
+    // 送信ボタン・Enterキーで呼ばれる関数
     function send() {
         const input = document.getElementById('input_msg');
         if (input.value.trim() !== "") {
@@ -203,12 +207,12 @@
         }
     }
 
-    // Enterキー対応
+    // Enterキーでも送信できるように設定
     document.getElementById('input_msg').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') send();
     });
 
-    // 読み込み時に一番下へスクロール
+    // 画面を開いた瞬間に一番下（最新メッセージ）を表示
     window.onload = function() {
         const msgDiv = document.getElementById('messages');
         msgDiv.scrollTop = msgDiv.scrollHeight;
