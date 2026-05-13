@@ -37,13 +37,14 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # --- モデル定義 ---
-class User(db.Model):
+class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    login_id = db.Column(db.String(50), unique=True, nullable=False)
-    display_name = db.Column(db.String(50), nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    profile_text = db.Column(db.String(200), default="よろしくお願いします！")
-    profile_image = db.Column(db.String(100), default="default.png")
+    room = db.Column(db.String(50), nullable=False)
+    # 【重要】Userテーブルのlogin_idと紐付ける設定
+    login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
+    content = db.Column(db.String(500), nullable=False)
+    # これにより msg.user.display_name が使えるようになります
+    user = db.relationship('User', backref='messages')
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -51,6 +52,7 @@ class Message(db.Model):
     login_id = db.Column(db.String(50), nullable=False)
     content = db.Column(db.String(500), nullable=False)
     user = db.relationship('User', backref='messages')
+
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
