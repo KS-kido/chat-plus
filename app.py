@@ -11,13 +11,19 @@ app.config['SECRET_KEY'] = 'secret!'
 
 # --- 1. データベース・保存先設定 ---
 database_url = os.environ.get('DATABASE_URL')
+
 if database_url:
     # Render等のPostgreSQL環境用（postgres:// を postgresql:// に変換）
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    # Render環境の場合、SSL接続を強制するオプションを付与
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "connect_args": {"sslmode": "require"}
+    }
 else:
-    # ローカル開発用のSQLite設定
+    # ローカル開発用のSQLite設定（DATABASE_URLがない場合）
     basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'chat.db')
 
