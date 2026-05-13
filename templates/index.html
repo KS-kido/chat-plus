@@ -151,7 +151,7 @@
             {% for msg in history %}
             {# ここでは login_id を使って自分の発言かどうかを厳密に判定 #}
             <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
-                <span class="username">{{ msg.login_id }}</span>
+                <span class="username">{{msg.user.display_name}}</span>
                 <div class="text">{{ msg.content }}</div>
             </div>
             {% endfor %}
