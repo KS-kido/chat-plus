@@ -1,5 +1,6 @@
 import os
 import uuid # ファイル名にランダムな文字列を付与するために使用
+from flask_migrate import upgrade # 追加
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
@@ -59,7 +60,13 @@ class Room(db.Model):
 
 # アプリ起動時にテーブルを自動作成（既存のものは維持される）
 with app.app_context():
-    db.create_all()
+    # migrations フォルダが必要なため、
+    # 以下の try-except で囲むのが安全です
+    try:
+        db.create_all() # 基本の作成
+        upgrade()       # Flask-Migrateによる差分更新の適用
+    except Exception as e:
+        print(f"Migration error: {e}")
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
