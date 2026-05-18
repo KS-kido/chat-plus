@@ -1,5 +1,7 @@
 import os
 import uuid
+# 【追加】日本時間を正確に扱うために datetime, timezone, timedelta をインポート
+from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
@@ -45,11 +47,12 @@ class User(db.Model):
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room = db.Column(db.String(50), nullable=False)
-    # 【修正ポイント】Userテーブルのlogin_idと紐付けるためのForeignKey
     login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
     content = db.Column(db.String(500), nullable=False)
     
-    # 【修正ポイント】Relationshipを設定。これで msg.user.display_name が取得可能になる
+    # 【追加】送信時間を保存するカラム（列）を追加。初期値として日本時間(JST)を自動設定します。
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone(timedelta(hours=9))))
+    
     user = db.relationship('User', backref='messages')
 
 class Room(db.Model):
@@ -143,8 +146,6 @@ def chat_room(room_name):
                 return "パスワードが違います"
         else:
             return render_template('room_login.html', room_name=room_name)
-    
-    # 履歴取得時にMessageモデルを通じてUser情報も取得される
     history = Message.query.filter_by(room=room_name).all()
     me = User.query.filter_by(login_id=session['login_id']).first()
     return render_template('index.html', room_name=room_name, display_name=me.display_name, history=history)
@@ -176,21 +177,24 @@ def handle_message(data):
     l_id = session.get('login_id')
     user = User.query.filter_by(login_id=l_id).first()
     
-    new_msg = Message(room=room, login_id=l_id, content=data['msg'])
+    # 【追加】新しくメッセージをDB保存する際、確実に日本時間をセット
+    jst_now = datetime.now(timezone(timedelta(hours=9)))
+    new_msg = Message(room=room, login_id=l_id, content=data['msg'], created_at=jst_now)
     db.session.add(new_msg)
     db.session.commit()
 
+    # 【追加】リアルタイムでクライアント側に送るデータに、時間文字列「12:34」の形にしたもの（time）を含める
     emit('message_from_server', {
         'username': user.display_name, 
         'msg': data['msg'],
-        'login_id': l_id
+        'login_id': l_id,
+        'time': jst_now.strftime('%H:%M')
     }, room=room)
 
-# --- 5. 実行処理（重複エラー防止のため最下部に集約） ---
+# --- 5. 実行処理 ---
 if __name__ == '__main__':
     with app.app_context():
         try:
-            # テーブル作成
             db.create_all() 
             print("Database setup completed.")
             if os.path.exists(os.path.join(basedir, 'migrations')):

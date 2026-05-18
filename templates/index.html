@@ -62,9 +62,15 @@
         /* 吹き出しの共通設定 */
         .msg-box {
             margin-bottom: 12px;
-            max-width: 80%;
+            max-width: 85%; /* 【調整】タイムスタンプが入るスペース確保のため少し広げました */
             display: flex;
             flex-direction: column;
+        }
+
+        /* 【重要】吹き出しとタイムスタンプを横並びにするためのコンテナ */
+        .msg-row {
+            display: flex;
+            align-items: flex-end; /* 下揃えにすることで、LINEのように時間の文字が吹き出しの底辺に並びます */
         }
 
         .text {
@@ -75,17 +81,35 @@
             position: relative;
         }
 
-            /* 【追加】吹き出しの中の位置情報リンクを見やすく装飾 */
+            /* 吹き出しの中の位置情報リンクを見やすく装飾 */
             .text a {
                 color: #0055aa;
                 text-decoration: underline;
                 font-weight: bold;
             }
 
+        /* 【追加】タイムスタンプの文字デザイン */
+        .timestamp {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8); /* 背景の青に馴染む白っぽい色 */
+            margin: 0 5px; /* 吹き出しとの隙間 */
+            white-space: nowrap; /* 途中で改行されるのを防ぐ */
+        }
+
         /* 相手のメッセージ（左側） */
         .other-msg {
             align-self: flex-start;
         }
+
+            /* 【追加】相手の時は、[吹き出し] [時間] の順番に並べる */
+            .other-msg .msg-row {
+                flex-direction: row;
+            }
+
+            /* 相手の時間の文字色は、白背景で見えやすいように少し暗めのグレーに */
+            .other-msg .timestamp {
+                color: #666666;
+            }
 
             .other-msg .text {
                 background: white;
@@ -103,6 +127,11 @@
         .my-msg {
             align-self: flex-end;
         }
+
+            /* 【追加】自分の時は、[時間] [吹き出し] のリバース（逆転）順に並べる */
+            .my-msg .msg-row {
+                flex-direction: row-reverse;
+            }
 
             .my-msg .text {
                 background: var(--line-green);
@@ -122,7 +151,6 @@
             border-top: 1px solid #ddd;
         }
 
-        /* 【追加】📍ボタンのデザイン */
         .geo-btn {
             background: none;
             border: none;
@@ -134,7 +162,7 @@
         }
 
             .geo-btn:active {
-                transform: scale(0.85); /* タップした時に少し縮む */
+                transform: scale(0.85);
             }
 
         #input_msg {
@@ -170,19 +198,23 @@
             {% for msg in history %}
             <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
                 <span class="username">{{ msg.user.display_name }}</span>
-                <div class="text">
-                    {% if msg.content.startswith('https://www.google.com/maps') %}
-                    <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
-                    {% else %}
-                    {{ msg.content }}
-                    {% endif %}
+
+                <div class="msg-row">
+                    <div class="text">
+                        {% if msg.content.startswith('https://www.google.com/maps') %}
+                        <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
+                        {% else %}
+                        {{ msg.content }}
+                        {% endif %}
+                    </div>
+                    <span class="timestamp">{{ msg.created_at.strftime('%H:%M') }}</span>
                 </div>
+
             </div>
             {% endfor %}
         </div>
         <div class="input-area">
             <button class="geo-btn" onclick="sendLocation()">📍</button>
-
             <input type="text" id="input_msg" placeholder="メッセージ" autocomplete="off">
             <button class="send-btn" onclick="send()">送信</button>
         </div>
@@ -191,7 +223,6 @@
     <script>
     const socket = io();
     const currentRoom = "{{ room_name }}";
-    // 重要：現在ログインしている自分のIDをJS変数に保持
     const myLoginId = "{{ session['login_id'] }}";
 
     socket.on('connect', () => {
@@ -202,31 +233,29 @@
     socket.on('message_from_server', function (data) {
         const msgDiv = document.getElementById('messages');
 
-        // 【重要】届いたデータの login_id と 自分のID を比較して左右を決定
         const isMyMsg = (data.login_id === myLoginId);
         const msgClass = isMyMsg ? 'my-msg' : 'other-msg';
 
-        // 【追加】新しくメッセージを受信した時、マップURLならリンクに化けさせる
         let displayContent = data.msg;
         if (data.msg.startsWith('https://www.google.com/maps')) {
             displayContent = `<a href="${data.msg}" target="_blank">📍 現在地を共有しました</a>`;
         }
 
-        // 吹き出しのHTMLを組み立て（Jinja2のループ内と同じ構造にする）
+        // 【追加】リアルタイム受信時：サーバーから送られてきた時間（data.time）を反映
+        // CSSの「flex-direction: row-reverse;」が効くため、HTML構造は相手の時と同じにしておけば自動で反転します
         const msgElement = `
             <div class="msg-box ${msgClass}">
                 <span class="username">${data.username}</span>
-                <div class="text">${displayContent}</div>
+                <div class="msg-row">
+                    <div class="text">${displayContent}</div>
+                    <span class="timestamp">${data.time}</span>
+                </div>
             </div>`;
 
-        // エリアの最後に追加
         msgDiv.insertAdjacentHTML('beforeend', msgElement);
-
-        // 送信・受信時に自動で一番下までスクロール
         msgDiv.scrollTop = msgDiv.scrollHeight;
     });
 
-    // 送信ボタン・Enterキーで呼ばれる関数
     function send() {
         const input = document.getElementById('input_msg');
         if (input.value.trim() !== "") {
@@ -238,7 +267,6 @@
         }
     }
 
-    // 【追加】📍ボタンを押したときに作動する位置情報取得関数
     function sendLocation() {
         if (!navigator.geolocation) {
             alert("お使いのブラウザは位置情報に対応していません。");
@@ -247,13 +275,10 @@
 
         navigator.geolocation.getCurrentPosition(
             function(position) {
-                const lat = position.coords.latitude;  // 緯度
-                const lon = position.coords.longitude; // 経度
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const mapUrl = `https://www.google.com/maps{lat},${lon}`;
 
-                // 【重要・修正】タイポを完全に修正した、最も標準的なGoogleマップのURL形式
-                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-
-                // 通常のメッセージと同じようにSocket.IOで送信
                 socket.emit('message_from_client', {
                     msg: mapUrl,
                     room: currentRoom
@@ -264,13 +289,11 @@
             }
         );
     }
-    
-    // Enterキーでも送信できるように設定
+
     document.getElementById('input_msg').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') send();
     });
 
-    // 画面を開いた瞬間に一番下（最新メッセージ）を表示
     window.onload = function() {
         const msgDiv = document.getElementById('messages');
         msgDiv.scrollTop = msgDiv.scrollHeight;
