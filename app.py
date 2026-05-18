@@ -1,6 +1,5 @@
 import os
 import uuid
-# 【追加】日本時間を正確に扱うために datetime, timezone, timedelta をインポート
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -31,12 +30,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 UPLOAD_FOLDER = os.path.join('static', 'profile_pics')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- 2. データベースとMigrateの初期化 ---
+# --- 2. データベースの初期化 ---
+# ※エラー回避のため、先にインスタンスを作ってからモデルを読み込ませます
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
 # --- モデル定義 ---
 class User(db.Model):
+    __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     login_id = db.Column(db.String(50), unique=True, nullable=False)
     display_name = db.Column(db.String(50), nullable=False)
@@ -45,20 +45,26 @@ class User(db.Model):
     profile_image = db.Column(db.String(100), default="default.png")
 
 class Message(db.Model):
+    __tablename__ = 'message'
+    # extend_existing=True を指定して、再定義エラーを完全に防止します
+    __table_args__ = {'extend_existing': True}
+    
     id = db.Column(db.Integer, primary_key=True)
     room = db.Column(db.String(50), nullable=False)
     login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
     content = db.Column(db.String(500), nullable=False)
-    
-    # 【追加】送信時間を保存するカラム（列）を追加。初期値として日本時間(JST)を自動設定します。
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone(timedelta(hours=9))))
     
     user = db.relationship('User', backref='messages')
 
 class Room(db.Model):
+    __tablename__ = 'room'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=True)
+
+# Migrateの初期化
+migrate = Migrate(app, db)
 
 # SocketIOの初期化
 socketio = SocketIO(app, 
@@ -177,13 +183,11 @@ def handle_message(data):
     l_id = session.get('login_id')
     user = User.query.filter_by(login_id=l_id).first()
     
-    # 【追加】新しくメッセージをDB保存する際、確実に日本時間をセット
     jst_now = datetime.now(timezone(timedelta(hours=9)))
     new_msg = Message(room=room, login_id=l_id, content=data['msg'], created_at=jst_now)
     db.session.add(new_msg)
     db.session.commit()
 
-    # 【追加】リアルタイムでクライアント側に送るデータに、時間文字列「12:34」の形にしたもの（time）を含める
     emit('message_from_server', {
         'username': user.display_name, 
         'msg': data['msg'],
