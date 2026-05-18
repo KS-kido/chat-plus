@@ -2,10 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- モバイル端末での表示を最適化（iPhoneのノッチやキーボード対応） -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Chat - {{ room_name }}</title>
-    <!-- Socket.IOライブラリの読み込み -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         :root {
@@ -77,6 +75,13 @@
             position: relative;
         }
 
+            /* 【追加】吹き出しの中の位置情報リンクを見やすく装飾 */
+            .text a {
+                color: #0055aa;
+                text-decoration: underline;
+                font-weight: bold;
+            }
+
         /* 相手のメッセージ（左側） */
         .other-msg {
             align-self: flex-start;
@@ -117,6 +122,21 @@
             border-top: 1px solid #ddd;
         }
 
+        /* 【追加】📍ボタンのデザイン */
+        .geo-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0 10px 0 5px;
+            outline: none;
+            transition: transform 0.1s;
+        }
+
+            .geo-btn:active {
+                transform: scale(0.85); /* タップした時に少し縮む */
+            }
+
         #input_msg {
             flex: 1;
             border: 1px solid #eee;
@@ -149,13 +169,20 @@
         <div id="messages">
             {% for msg in history %}
             <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
-                <!-- ここを修正！ msg.login_id ではなく msg.user.display_name にする -->
                 <span class="username">{{ msg.user.display_name }}</span>
-                <div class="text">{{ msg.content }}</div>
+                <div class="text">
+                    {% if msg.content.startswith('https://www.google.com/maps') %}
+                    <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
+                    {% else %}
+                    {{ msg.content }}
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>
         <div class="input-area">
+            <button class="geo-btn" onclick="sendLocation()">📍</button>
+
             <input type="text" id="input_msg" placeholder="メッセージ" autocomplete="off">
             <button class="send-btn" onclick="send()">送信</button>
         </div>
@@ -179,11 +206,17 @@
         const isMyMsg = (data.login_id === myLoginId);
         const msgClass = isMyMsg ? 'my-msg' : 'other-msg';
 
+        // 【追加】新しくメッセージを受信した時、マップURLならリンクに化けさせる
+        let displayContent = data.msg;
+        if (data.msg.startsWith('https://www.google.com/maps')) {
+            displayContent = `<a href="${data.msg}" target="_blank">📍 現在地を共有しました</a>`;
+        }
+
         // 吹き出しのHTMLを組み立て（Jinja2のループ内と同じ構造にする）
         const msgElement = `
             <div class="msg-box ${msgClass}">
                 <span class="username">${data.username}</span>
-                <div class="text">${data.msg}</div>
+                <div class="text">${displayContent}</div>
             </div>`;
 
         // エリアの最後に追加
@@ -203,6 +236,33 @@
             });
             input.value = '';
         }
+    }
+
+    // 【追加】📍ボタンを押したときに作動する位置情報取得関数
+    function sendLocation() {
+        if (!navigator.geolocation) {
+            alert("お使いのブラウザは位置情報に対応していません。");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;  // 緯度
+                const lon = position.coords.longitude; // 経度
+
+                // 【重要・修正】タイポを完全に修正した、最も標準的なGoogleマップのURL形式
+                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+
+                // 通常のメッセージと同じようにSocket.IOで送信
+                socket.emit('message_from_client', {
+                    msg: mapUrl,
+                    room: currentRoom
+                });
+            },
+            function(error) {
+                alert("位置情報の取得に失敗しました。ブラウザの位置情報許可設定を確認してください。");
+            }
+        );
     }
 
     // Enterキーでも送信できるように設定
