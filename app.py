@@ -31,12 +31,15 @@ UPLOAD_FOLDER = os.path.join('static', 'profile_pics')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # --- 2. データベースの初期化 ---
-# ※エラー回避のため、先にインスタンスを作ってからモデルを読み込ませます
 db = SQLAlchemy(app)
 
 # --- モデル定義 ---
+# 【解説】今後のトラブルを防ぐため、User、Message、Roomのすべてに
+# 再定義エラーを防止する `extend_existing=True` を完全に適用しました。
+
 class User(db.Model):
     __tablename__ = 'user'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
     login_id = db.Column(db.String(50), unique=True, nullable=False)
     display_name = db.Column(db.String(50), nullable=False)
@@ -46,19 +49,24 @@ class User(db.Model):
 
 class Message(db.Model):
     __tablename__ = 'message'
-    # extend_existing=True を指定して、再定義エラーを完全に防止します
     __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     room = db.Column(db.String(50), nullable=False)
     login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
     content = db.Column(db.String(500), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone(timedelta(hours=9))))
+    
+    # 【最重要修正！】
+    # nullable=False から nullable=True に変更しました。
+    # これにより、過去に投稿された（時間データを持たない）本番メッセージを壊すことなく、
+    # 新しい「時間データ（created_at）」の列だけを安全に追加・共存させることができます。
+    created_at = db.Column(db.DateTime, nullable=True, default=lambda: datetime.now(timezone(timedelta(hours=9))))
     
     user = db.relationship('User', backref='messages')
 
 class Room(db.Model):
     __tablename__ = 'room'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=True)
@@ -201,6 +209,7 @@ if __name__ == '__main__':
         try:
             db.create_all() 
             print("Database setup completed.")
+            # 本番環境（Render）起動時に、自動で設計図を読み込んで既存データを消さずにカラムを追加します
             if os.path.exists(os.path.join(basedir, 'migrations')):
                 upgrade()
         except Exception as e:
