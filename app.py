@@ -211,19 +211,28 @@ if __name__ == '__main__':
             db.create_all() 
             print("Database setup completed.")
             
-            # 2. 無料プラン対策：migrationsフォルダがあれば、コンテキストを明示して強制アップグレード
-            if os.path.exists(os.path.join(basedir, 'migrations')):
+            # 【ここを徹底補強！】
+            # basedir（app.pyがあるフォルダ）を起点に、migrationsの絶対パスをガチガチに指定します
+            target_migrations_dir = os.path.join(basedir, 'migrations')
+            print(f"Checking migrations path: {target_migrations_dir}")
+            
+            if os.path.exists(target_migrations_dir):
+                print("Migrations folder found! Executing database upgrade...")
                 from alembic import command
                 from flask_migrate import current_app
                 
-                # Render（本番環境）のPostgreSQLでもエラーで止まらないように、
-                # 「既存データがあってもテーブルを変更する」という設定を強制適用します
+                # パスがズレていてもAlembicが確実にフォルダを読み込めるように、
+                # アプリの現在地（basedir）を明示的にセットして強制実行します
                 config = current_app.extensions['migrate'].migrate.get_config()
+                config.set_main_option('script_location', target_migrations_dir)
+                
                 command.upgrade(config, 'head')
-                print("Render DB migration upgrade successful!")
+                print("Render DB migration upgrade completely successful!")
+            else:
+                print("🚨 WARNING: Migrations folder NOT found on Render server!")
                 
         except Exception as e:
-            print(f"DB Setup Notice (Don't worry if it's safe): {e}")
+            print(f"DB Setup Notice: {e}")
 
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
