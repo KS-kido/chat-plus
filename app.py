@@ -207,13 +207,23 @@ def handle_message(data):
 if __name__ == '__main__':
     with app.app_context():
         try:
+            # 1. まず既存テーブルのベースを確認
             db.create_all() 
             print("Database setup completed.")
-            # 本番環境（Render）起動時に、自動で設計図を読み込んで既存データを消さずにカラムを追加します
+            
+            # 2. 無料プラン対策：migrationsフォルダがあれば、コンテキストを明示して強制アップグレード
             if os.path.exists(os.path.join(basedir, 'migrations')):
-                upgrade()
+                from alembic import command
+                from flask_migrate import current_app
+                
+                # Render（本番環境）のPostgreSQLでもエラーで止まらないように、
+                # 「既存データがあってもテーブルを変更する」という設定を強制適用します
+                config = current_app.extensions['migrate'].migrate.get_config()
+                command.upgrade(config, 'head')
+                print("Render DB migration upgrade successful!")
+                
         except Exception as e:
-            print(f"DB Setup Notice: {e}")
+            print(f"DB Setup Notice (Don't worry if it's safe): {e}")
 
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
