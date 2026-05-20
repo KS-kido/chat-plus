@@ -207,32 +207,25 @@ def handle_message(data):
 if __name__ == '__main__':
     with app.app_context():
         try:
-            # 1. まず既存テーブルのベースを確認
+            # 1. まず通常のテーブルチェック
             db.create_all() 
             print("Database setup completed.")
             
-            # 【ここを徹底補強！】
-            # basedir（app.pyがあるフォルダ）を起点に、migrationsの絶対パスをガチガチに指定します
-            target_migrations_dir = os.path.join(basedir, 'migrations')
-            print(f"Checking migrations path: {target_migrations_dir}")
+            # 2. 【超強力対策】本番のPostgreSQLに、プログラムから直接「列の追加」を命令する
+            # すでに列がある場合はエラーになりますが、その場合はexceptで安全にスルーします
+            from sqlalchemy import text
             
-            if os.path.exists(target_migrations_dir):
-                print("Migrations folder found! Executing database upgrade...")
-                from alembic import command
-                from flask_migrate import current_app
-                
-                # パスがズレていてもAlembicが確実にフォルダを読み込めるように、
-                # アプリの現在地（basedir）を明示的にセットして強制実行します
-                config = current_app.extensions['migrate'].migrate.get_config()
-                config.set_main_option('script_location', target_migrations_dir)
-                
-                command.upgrade(config, 'head')
-                print("Render DB migration upgrade completely successful!")
-            else:
-                print("🚨 WARNING: Migrations folder NOT found on Render server!")
-                
+            print("Checking/Forcing column creation on production database...")
+            # PostgreSQLに対して「messageテーブルに、created_atという列を、NULLを許容して今すぐ追加せよ」という生のSQLを実行します
+            db.session.execute(text('ALTER TABLE message ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE;'))
+            db.session.commit()
+            print("🚀 [Success] created_at column checked/added to PostgreSQL without losing data!")
+            
         except Exception as e:
-            print(f"DB Setup Notice: {e}")
+            # すでに列が存在する場合や、SQLite環境（ローカル）でALTER TABLEが競合した場合は、
+            # データを壊さないように安全にこのエラーを無視して進みます
+            db.session.rollback()
+            print(f"DB Row-Fix Notice (Safe to ignore if column already exists): {e}")
 
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
