@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_migrate import Migrate, upgrade
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -34,9 +34,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 db = SQLAlchemy(app)
 
 # --- モデル定義 ---
-# 【解説】今後のトラブルを防ぐため、User、Message、Roomのすべてに
-# 再定義エラーを防止する `extend_existing=True` を完全に適用しました。
-
 class User(db.Model):
     __tablename__ = 'user'
     __table_args__ = {'extend_existing': True}
@@ -56,10 +53,7 @@ class Message(db.Model):
     login_id = db.Column(db.String(50), db.ForeignKey('user.login_id'), nullable=False)
     content = db.Column(db.String(500), nullable=False)
     
-    # 【最重要修正！】
-    # nullable=False から nullable=True に変更しました。
-    # これにより、過去に投稿された（時間データを持たない）本番メッセージを壊すことなく、
-    # 新しい「時間データ（created_at）」の列だけを安全に追加・共存させることができます。
+    # 過去データがあっても共存できるよう nullable=True にしています
     created_at = db.Column(db.DateTime, nullable=True, default=lambda: datetime.now(timezone(timedelta(hours=9))))
     
     user = db.relationship('User', backref='messages')
@@ -73,6 +67,28 @@ class Room(db.Model):
 
 # Migrateの初期化
 migrate = Migrate(app, db)
+
+# =======================================================
+# 🔥 【Render無料プラン専用：本番DB無破壊アップデートパッチ】
+# =======================================================
+with app.app_context():
+    try:
+        # 1. まず通常のテーブルチェック
+        db.create_all()
+        
+        # 2. 本番PostgreSQLに直接「created_at」列を強制追加する
+        # ※ 過去のデータがNULLになっても怒られないよう、明示的に NULL（NULLを許容）を指定して直球で追加します
+        from sqlalchemy import text
+        print("Executing absolute column injection on production database...")
+        db.session.execute(text('ALTER TABLE message ADD COLUMN created_at TIMESTAMP WITHOUT TIME ZONE NULL;'))
+        db.session.commit()
+        print("🚀 [SUCCESS] created_at column permanently added to PostgreSQL!")
+        
+    except Exception as e:
+        # すでに列が存在する場合は、PostgreSQLが重複エラーを吐くので安全に無視してロールバックします
+        db.session.rollback()
+        print(f"DB Row-Fix Notice (This is normal if column already exists): {e}")
+# =======================================================
 
 # SocketIOの初期化
 socketio = SocketIO(app, 
@@ -207,25 +223,10 @@ def handle_message(data):
 if __name__ == '__main__':
     with app.app_context():
         try:
-            # 1. まず通常のテーブルチェック
             db.create_all() 
-            print("Database setup completed.")
-            
-            # 2. 【超強力対策】本番のPostgreSQLに、プログラムから直接「列の追加」を命令する
-            # すでに列がある場合はエラーになりますが、その場合はexceptで安全にスルーします
-            from sqlalchemy import text
-            
-            print("Checking/Forcing column creation on production database...")
-            # PostgreSQLに対して「messageテーブルに、created_atという列を、NULLを許容して今すぐ追加せよ」という生のSQLを実行します
-            db.session.execute(text('ALTER TABLE message ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE;'))
-            db.session.commit()
-            print("🚀 [Success] created_at column checked/added to PostgreSQL without losing data!")
-            
+            print("Local Database setup completed.")
         except Exception as e:
-            # すでに列が存在する場合や、SQLite環境（ローカル）でALTER TABLEが競合した場合は、
-            # データを壊さないように安全にこのエラーを無視して進みます
-            db.session.rollback()
-            print(f"DB Row-Fix Notice (Safe to ignore if column already exists): {e}")
+            print(f"Local DB Setup Notice: {e}")
 
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
