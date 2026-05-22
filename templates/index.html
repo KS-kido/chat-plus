@@ -237,8 +237,10 @@
         const msgClass = isMyMsg ? 'my-msg' : 'other-msg';
 
         let displayContent = data.msg;
+
+        // ⭕ 修正：実際のGoogle MapsのURL（https://www.google.com/maps）で始まるかチェックする
         if (data.msg.startsWith('https://www.google.com/maps')) {
-            displayContent = `<a href="${data.msg}" target="_blank">📍 現在地を共有しました</a>`;
+            displayContent = `<a href="${data.msg}" target="_blank" class="map-link">📍 現在地を共有しました</a>`;
         }
 
         // 【追加】リアルタイム受信時：サーバーから送られてきた時間（data.time）を反映
