@@ -223,8 +223,8 @@ def handle_message(data):
 if __name__ == '__main__':
     with app.app_context():
         try:
-            # ローカル環境（SQLite）のためのシンプルな初期化だけにします。
-            # 本番用の余計なALTER TABLE命令はすべて削除します。
+            # ローカル環境（SQLite）のためのシンプルな初期化だけに戻します。
+            # 本番用の余計なALTER TABLE命令（パッチ）はすべて削除します。
             db.create_all() 
             print("Local Database setup completed.")
         except Exception as e:
