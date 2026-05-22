@@ -201,7 +201,7 @@
 
                 <div class="msg-row">
                     <div class="text">
-                        {% if msg.content.startswith('https://www.google.com/maps') %}
+                        {% if msg.content.startswith('https://www.google.com/maps?q=') %}
                         <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
                         {% else %}
                         {{ msg.content }}
@@ -238,8 +238,8 @@
 
         let displayContent = data.msg;
 
-        // ⭕ 修正：実際のGoogle MapsのURL（https://www.google.com/maps）で始まるかチェックする
-        if (data.msg.startsWith('https://www.google.com/maps')) {
+        // 🆕 リアルタイム受信：新しい判定用URL（https://www.google.com/maps?q=）に変更
+        if (data.msg.startsWith('https://www.google.com/maps?q=')) {
             displayContent = `<a href="${data.msg}" target="_blank" class="map-link">📍 現在地を共有しました</a>`;
         }
 
@@ -279,7 +279,8 @@
             function(position) {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-                const mapUrl = `https://www.google.com/maps{lat},${lon}`;
+                // 🆕 送信URL：ドルマークを追加し、標準的なGoogleマップのクエリ形式（?q=）に完全修正
+                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
 
                 socket.emit('message_from_client', {
                     msg: mapUrl,
