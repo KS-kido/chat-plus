@@ -195,6 +195,16 @@ def logout():
     session.pop('login_id', None)
     return redirect(url_for('login'))
 
+from flask import send_from_directory
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('static', 'manifest.json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('static', 'sw.js')
+
 # --- 4. リアルタイム通信 (SocketIO) ---
 
 @socketio.on('join')
