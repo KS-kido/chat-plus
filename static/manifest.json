@@ -1,0 +1,20 @@
+{
+  "name": "Chat Plus",
+  "short_name": "ChatPlus",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#7494C0",
+  "theme_color": "#35495e",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
