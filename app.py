@@ -219,6 +219,7 @@ def handle_message(data):
         'time': jst_now.strftime('%H:%M')
     }, room=room)
 
+
 # --- 5. 実行処理 ---
 if __name__ == '__main__':
     with app.app_context():
