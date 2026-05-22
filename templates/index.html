@@ -184,6 +184,20 @@
             background: none;
             font-size: 16px;
         }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 5px;
+            opacity: 0.5;
+            outline: none;
+        }
+
+            .delete-btn:hover {
+                opacity: 1;
+            }
     </style>
 </head>
 <body>
@@ -196,10 +210,14 @@
 
         <div id="messages">
             {% for msg in history %}
-            <div class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
+            <div id="msg-{{ msg.id }}" class="msg-box {{ 'my-msg' if msg.login_id == session['login_id'] else 'other-msg' }}">
                 <span class="username">{{ msg.user.display_name }}</span>
 
                 <div class="msg-row">
+                    {% if msg.login_id == session['login_id'] %}
+                    <button class="delete-btn" onclick="deleteMessage('{{ msg.id }}')">🗑️</button>
+                    {% endif %}
+
                     <div class="text">
                         {% if msg.content.startswith('https://www.google.com/maps?q=') %}
                         <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
@@ -209,10 +227,10 @@
                     </div>
                     <span class="timestamp">{{ msg.created_at.strftime('%H:%M') }}</span>
                 </div>
-
             </div>
             {% endfor %}
         </div>
+
         <div class="input-area">
             <button class="geo-btn" onclick="sendLocation()">📍</button>
             <input type="text" id="input_msg" placeholder="メッセージ" autocomplete="off">
@@ -238,17 +256,22 @@
 
         let displayContent = data.msg;
 
-        // 🆕 リアルタイム受信：新しい判定用URL（https://www.google.com/maps?q=）に変更
         if (data.msg.startsWith('https://www.google.com/maps?q=')) {
             displayContent = `<a href="${data.msg}" target="_blank" class="map-link">📍 現在地を共有しました</a>`;
         }
 
-        // 【追加】リアルタイム受信時：サーバーから送られてきた時間（data.time）を反映
-        // CSSの「flex-direction: row-reverse;」が効くため、HTML構造は相手の時と同じにしておけば自動で反転します
+        // 🆕 リアルタイムに届いた自分のメッセージにもゴミ箱ボタンを表示できるように調整
+        // また、後から消せるように id="msg-${data.id}" 属性を付与します
+        let deleteBtnHtml = '';
+        if (isMyMsg && data.id) {
+            deleteBtnHtml = `<button class="delete-btn" onclick="deleteMessage('${data.id}')">🗑️</button>`;
+        }
+
         const msgElement = `
-            <div class="msg-box ${msgClass}">
+            <div id="msg-${data.id || ''}" class="msg-box ${msgClass}">
                 <span class="username">${data.username}</span>
                 <div class="msg-row">
+                    ${deleteBtnHtml}
                     <div class="text">${displayContent}</div>
                     <span class="timestamp">${data.time}</span>
                 </div>
@@ -256,6 +279,15 @@
 
         msgDiv.insertAdjacentHTML('beforeend', msgElement);
         msgDiv.scrollTop = msgDiv.scrollHeight;
+    });
+
+    // 🆕 サーバーから「削除命令」が届いた時の処理
+    socket.on('message_deleted_from_server', function (data) {
+        const targetMsg = document.getElementById(`msg-${data.message_id}`);
+        if (targetMsg) {
+            // 対象のメッセージ吹き出しをシュッと画面から削除する
+            targetMsg.remove();
+        }
     });
 
     function send() {
@@ -279,7 +311,6 @@
             function(position) {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-                // 🆕 送信URL：ドルマークを追加し、標準的なGoogleマップのクエリ形式（?q=）に完全修正
                 const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
 
                 socket.emit('message_from_client', {
@@ -291,6 +322,16 @@
                 alert("位置情報の取得に失敗しました。ブラウザの位置情報許可設定を確認してください。");
             }
         );
+    }
+
+    // 🆕 ゴミ箱ボタンが押された時に、サーバーへ削除命令を飛ばす関数
+    function deleteMessage(messageId) {
+        if (confirm("このメッセージを削除しますか？")) {
+            socket.emit('delete_message_from_client', {
+                message_id: messageId,
+                room: currentRoom
+            });
+        }
     }
 
     document.getElementById('input_msg').addEventListener('keypress', (e) => {

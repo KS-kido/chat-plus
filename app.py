@@ -212,13 +212,33 @@ def handle_message(data):
     db.session.add(new_msg)
     db.session.commit()
 
+   # app.py の handle_message の一番下です
     emit('message_from_server', {
+        'id': new_msg.id,  # 🆕 ここを1行追加！これで新着メッセージもすぐ消せるようになります
         'username': user.display_name, 
         'msg': data['msg'],
         'login_id': l_id,
         'time': jst_now.strftime('%H:%M')
     }, room=room)
 
+# 🆕 メッセージ削除用のイベントを追加
+@socketio.on('delete_message_from_client')
+def handle_delete_message(data):
+    message_id = data.get('message_id')
+    room = data.get('room')
+    login_id = session.get('login_id')
+
+    # データベースから該当のメッセージを探す
+    # （※あなたのコードのMessageクラスのモデル名に合わせてください）
+    msg = Message.query.get(message_id)
+
+    # メッセージが存在し、かつ「書いた本人」である場合のみ削除を許可する
+    if msg and msg.login_id == login_id:
+        db.session.delete(msg)
+        db.session.commit()
+
+        # ルーム内の全員に「このIDのメッセージを画面から消して！」とリアルタイム通知
+        emit('message_deleted_from_server', {'message_id': message_id}, room=room)
 
 # --- 5. 実行処理 ---
 if __name__ == '__main__':
