@@ -13,6 +13,35 @@
         button { width: 100%; padding: 12px; background-color: #007aff; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
         .link { margin-top: 15px; font-size: 14px; }
         .link a { color: #007aff; text-decoration: none; }
+
+        /* 📲 追加：PWAインストールボタンの専用デザイン（画面の雰囲気に統一） */
+        .pwa-container {
+            display: none; /* 初期状態は非表示（ブラウザがPWAを検知したらJSで表示） */
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .pwa-text {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .pwa-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #35495e; /* チャットのヘッダーに合わせたシックなグレー */
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+        .pwa-btn:active {
+            background-color: #243342;
+        }
     </style>
 </head>
 <body>
@@ -20,24 +49,83 @@
         <h2>ログイン</h2>
 
         {# エラーメッセージの表示エリア #}
-            {% with messages = get_flashed_messages() %}
-            {% if messages %}
-            <ul style="color: red;">
-            {% for message in messages %}
-            <li>{{ message }}</li>
-            {% endfor %}
-            </ul>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul style="color: red; text-align: left; padding-left: 20px; font-size: 14px;">
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
         {% endif %}
         {% endwith %}
 
         <form method="POST">
            <input type="text" name="login_id" placeholder="ログインID" required>
            <input type="password" name="password" placeholder="パスワード" required>
-        <button type="submit">ログイン</button>
-</form>
+           <button type="submit">ログイン</button>
+        </form>
+        
         <div class="link">
             アカウントがない方は <a href="/signup">新規登録</a>
         </div>
+
+        <div id="pwa-install-container" class="pwa-container">
+            <p class="pwa-text">スマホのホーム画面にアプリを登録できます</p>
+            <button id="pwa-login-install-btn" class="pwa-btn">📲 アプリをインストール</button>
+        </div>
     </div>
+
+    <script>
+    // 1. ログイン画面が開いた瞬間に、裏でサービスワーカー（アプリ化エンジン）を登録・起動
+    if ('serviceWorker' in navigator) {
+        // スコープをルート「/」にすることで、ログイン画面を含むサイト全体をアプリ対象に設定
+        navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
+            .then(() => console.log('Login画面でService Workerの登録に成功！'))
+            .catch((err) => console.error('Service Workerの登録に失敗', err));
+    }
+
+    let deferredPrompt;
+    const installContainer = document.getElementById('pwa-install-container');
+    const installBtn = document.getElementById('pwa-login-install-btn');
+
+    // 2. すでにホーム画面から「アプリ（スタンドアロン）モード」で起動している場合はボタンを出さない
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
+
+        // 🤖 Android（Chrome）やPCブラウザが「アプリ化可能」と判断した時のイベント
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // ブラウザ標準の通知をカット
+            deferredPrompt = e;  // インストール実行用にイベントを保存
+            
+            // アプリ化が可能な状態になったら、隠していたボタンエリアを表示
+            installContainer.style.display = 'block'; 
+        });
+
+        // 🍏 iPhone（Safari）向けの判定処理
+        // iPhoneは上記の「beforeinstallprompt」イベントに対応していないため、手動でボタンを表示
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        
+        if (isIos && isSafari) {
+            installContainer.style.display = 'block';
+        }
+    }
+
+    // 3. インストールボタンがタップされた時の処理
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // AndroidやChromeの場合：公式のインストールダイアログを一発起動！
+            deferredPrompt.prompt(); 
+            
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`ユーザーの選択: ${outcome}`);
+            
+            deferredPrompt = null; // 使用済みクリア
+            installContainer.style.display = 'none'; // ボタンを隠す
+        } else {
+            // iPhone（Safari）の場合：JSから直接ダイアログを呼べない仕様のため、手順を優しくガイド
+            alert("【iPhoneをご利用の方】\n\nブラウザ（Safari）の下部にある「共有ボタン（📤）」をタップし、メニュー内の「ホーム画面に追加」を選択するとアプリとしてインストールできます！");
+        }
+    });
+    </script>
 </body>
 </html>
