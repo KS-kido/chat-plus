@@ -1,9 +1,12 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
+<!DOCTYPE html><html lang="ja"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ログイン - ChatApp</title>
+    
+    <link rel="manifest" href="https://chat-plus-c4wq.onrender.com/manifest.json" crossorigin="use-credentials">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <style>
         /* signup.html と同じスタイル */
         body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
@@ -14,7 +17,7 @@
         .link { margin-top: 15px; font-size: 14px; }
         .link a { color: #007aff; text-decoration: none; }
 
-        /* 📲 追加：PWAインストールボタンの専用デザイン（画面の雰囲気に統一） */
+        /* 📲 PWAインストールボタンの専用デザイン */
         .pwa-container {
             display: none; /* 初期状態は非表示（ブラウザがPWAを検知したらJSで表示） */
             margin-top: 25px;
@@ -29,7 +32,7 @@
         .pwa-btn {
             width: 100%;
             padding: 12px;
-            background-color: #35495e; /* チャットのヘッダーに合わせたシックなグレー */
+            background-color: #35495e;
             border: none;
             border-radius: 5px;
             color: white;
@@ -42,9 +45,7 @@
         .pwa-btn:active {
             background-color: #243342;
         }
-    </style>
-</head>
-<body>
+    </style></head><body>
     <div class="container">
         <h2>ログイン</h2>
 
@@ -78,8 +79,7 @@
     <script>
     // 1. ログイン画面が開いた瞬間に、裏でサービスワーカー（アプリ化エンジン）を登録・起動
     if ('serviceWorker' in navigator) {
-        // スコープをルート「/」にすることで、ログイン画面を含むサイト全体をアプリ対象に設定
-        navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then(() => console.log('Login画面でService Workerの登録に成功！'))
             .catch((err) => console.error('Service Workerの登録に失敗', err));
     }
@@ -93,15 +93,12 @@
 
         // 🤖 Android（Chrome）やPCブラウザが「アプリ化可能」と判断した時のイベント
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); // ブラウザ標準の通知をカット
-            deferredPrompt = e;  // インストール実行用にイベントを保存
-            
-            // アプリ化が可能な状態になったら、隠していたボタンエリアを表示
+            e.preventDefault(); 
+            deferredPrompt = e;  
             installContainer.style.display = 'block'; 
         });
 
         // 🍏 iPhone（Safari）向けの判定処理
-        // iPhoneは上記の「beforeinstallprompt」イベントに対応していないため、手動でボタンを表示
         const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         
@@ -113,19 +110,13 @@
     // 3. インストールボタンがタップされた時の処理
     installBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
-            // AndroidやChromeの場合：公式のインストールダイアログを一発起動！
             deferredPrompt.prompt(); 
-            
             const { outcome } = await deferredPrompt.userChoice;
             console.log(`ユーザーの選択: ${outcome}`);
-            
-            deferredPrompt = null; // 使用済みクリア
-            installContainer.style.display = 'none'; // ボタンを隠す
+            deferredPrompt = null; 
+            installContainer.style.display = 'none'; 
         } else {
-            // iPhone（Safari）の場合：JSから直接ダイアログを呼べない仕様のため、手順を優しくガイド
             alert("【iPhoneをご利用の方】\n\nブラウザ（Safari）の下部にある「共有ボタン（📤）」をタップし、メニュー内の「ホーム画面に追加」を選択するとアプリとしてインストールできます！");
         }
     });
-    </script>
-</body>
-</html>
+    </script></body></html>
