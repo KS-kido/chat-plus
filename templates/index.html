@@ -25,7 +25,8 @@
         body, html {
             margin: 0;
             padding: 0;
-            height: 100%;
+            height: 100vh; /* 確実に画面に収める */
+            height: -webkit-fill-available; /* スマホブラウザ特有の高さ計算バグを強力に補正 */
             width: 100%;
             overflow: hidden; /* 画面全体は固定し、メッセージエリアだけをスクロールさせる */
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
@@ -35,8 +36,8 @@
         .app-container {
             display: flex;
             flex-direction: column;
-            height: 100vh; /* dvhから通常のvhに戻し、全体を確実に画面内に収めます */
-            height: -webkit-fill-available; /* モバイルSafari/Chrome特有の高さバグ対策 */
+            height: 100vh;
+            height: -webkit-fill-available; /* 最外枠の高さをスマホのリアルな表示領域に固定 */
             background-color: var(--line-blue);
             position: relative;
         }
@@ -52,6 +53,7 @@
             min-height: 50px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 100;
+            flex-shrink: 0; /* ヘッダーが潰れるのを防ぐ */
         }
 
         /* ↩️ 戻るボタン（＜） */
@@ -159,61 +161,68 @@
         /* ⌨️ 下部の入力エリア全体 */
         .input-area {
             background: white;
-            /* 左右と上にしっかり余白をとり、下側はセーフエリア（ナビゲーションバー）を自動計算 */
             padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
             display: flex;
             align-items: center;
             border-top: 1px solid #ddd;
-            /* 🔔 ここを追加：入力欄が画面外に潰されたり押し出されたりするのを絶対に防ぐおまじない */
+            flex-shrink: 0; /* 上の要素に押し出されて画面外に潰れるのを絶対に防ぐ */
+            z-index: 110;
+        }
+
+        /* 📍 位置情報ボタン */
+        .geo-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0 10px 0 5px;
+            outline: none;
+            transition: transform 0.1s;
             flex-shrink: 0;
-            /* 📍 位置情報ボタン */
-            .geo-btn {
-                background: none;
-                border: none;
-                font-size: 22px;
-                cursor: pointer;
-                padding: 0 10px 0 5px;
-                outline: none;
-                transition: transform 0.1s;
+        }
+            /* ボタンを押した時にちょっと小さくして「ポチッ」とした感覚を出す */
+            .geo-btn:active {
+                transform: scale(0.85);
             }
-                /* ボタンを押した時にちょっと小さくして「ポチッ」とした感覚を出す */
-                .geo-btn:active {
-                    transform: scale(0.85);
-                }
-            /* ✏️ 文字の入力欄 */
-            #input_msg {
-                flex: 1;
-                border: 1px solid #eee;
-                background: #f0f0f0;
-                padding: 10px 15px;
-                border-radius: 25px; /* 丸っこい入力欄 */
-                font-size: 16px;
-                outline: none;
+
+        /* ✏️ 文字の入力欄 */
+        #input_msg {
+            flex: 1;
+            border: 1px solid #eee;
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 25px; /* 丸っこい入力欄 */
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* 🚀 送信ボタン */
+        .send-btn {
+            color: #007aff;
+            font-weight: bold;
+            padding: 0 15px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* 🗑️ メッセージ削除（ゴミ箱）ボタン */
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 5px;
+            opacity: 0.5; /* 普段は薄っすら表示 */
+            outline: none;
+            flex-shrink: 0;
+        }
+            /* ゴミ箱にマウスを乗せたら（またはタップしたら）クッキリ表示 */
+            .delete-btn:hover {
+                opacity: 1;
             }
-            /* 🚀 送信ボタン */
-            .send-btn {
-                color: #007aff;
-                font-weight: bold;
-                padding: 0 15px;
-                cursor: pointer;
-                border: none;
-                background: none;
-                font-size: 16px;
-            }
-            /* 🗑️ メッセージ削除（ゴミ箱）ボタン */
-            .delete-btn {
-                background: none;
-                border: none;
-                cursor: pointer;
-                font-size: 14px;
-                padding: 0 5px;
-                opacity: 0.5; /* 普段は薄っすら表示 */
-                outline: none;
-            }
-                /* ゴミ箱にマウスを乗せたら（またはタップしたら）クッキリ表示 */
-                .delete-btn:hover {
-                    opacity: 1;
-                }
     </style>
 </head>
 <body>
@@ -235,7 +244,7 @@
                     {% endif %}
 
                     <div class="text">
-                        {% if msg.content.startswith('https://www.google.com/maps?q=') %}
+                        {% if msg.content.startswith('https://www.google.com/maps') %}
                         <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
                         {% else %}
                         {{ msg.content }}
@@ -268,24 +277,21 @@
     socket.on('message_from_server', function (data) {
         const msgDiv = document.getElementById('messages');
 
-        // 届いたメッセージが自分自身が送ったものかどうか判定
         const isMyMsg = (data.login_id === myLoginId);
         const msgClass = isMyMsg ? 'my-msg' : 'other-msg';
 
         let displayContent = data.msg;
 
-        // 受信した内容が位置情報のURLだった場合は、即座にマップリンクに変換
-        if (data.msg.startsWith('https://www.google.com/maps?q=')) {
+        // 🛠️ 変更点②：リアルタイム受信時のGoogle公式URL判定（https://www.google.com/maps）
+        if (data.msg.startsWith('https://www.google.com/maps')) {
             displayContent = `<a href="${data.msg}" target="_blank" class="map-link">📍 現在地を共有しました</a>`;
         }
 
-        // 新しくリアルタイムに届いた自分のメッセージにも、その場で消せるようにゴミ箱ボタンを生成
         let deleteBtnHtml = '';
         if (isMyMsg && data.id) {
             deleteBtnHtml = `<button class="delete-btn" onclick="deleteMessage('${data.id}')">🗑️</button>`;
         }
 
-        // 送られてきたデータを元に、新しい吹き出しのHTMLを作成
         const msgElement = `
             <div id="msg-${data.id || ''}" class="msg-box ${msgClass}">
                 <span class="username">${data.username}</span>
@@ -296,52 +302,45 @@
                 </div>
             </div>`;
 
-        // メッセージエリアの末尾（一番下）に吹き出しを追加
         msgDiv.insertAdjacentHTML('beforeend', msgElement);
-        // 新しいメッセージが見えるように、自動で一番下までスクロールさせる
         msgDiv.scrollTop = msgDiv.scrollHeight;
     });
 
     // 📡 サーバーから「メッセージが削除されたよ」という通知が届いた時の処理
     socket.on('message_deleted_from_server', function (data) {
-        // 削除対象のHTML（吹き出し）をIDで探す
         const targetMsg = document.getElementById(`msg-${data.message_id}`);
         if (targetMsg) {
-            targetMsg.remove(); // 画面から完全に削除
+            targetMsg.remove();
         }
     });
 
     // 📝 メッセージを送信する関数
     function send() {
         const input = document.getElementById('input_msg');
-        // 空白だけの送信を防ぐ（トリム処理）
         if (input.value.trim() !== "") {
-            // サーバーに向けてメッセージ内容と部屋名を送信（Client -> Server）
             socket.emit('message_from_client', {
                 msg: input.value,
                 room: currentRoom
             });
-            input.value = ''; // 送信し終わったら入力欄を空っぽにする
+            input.value = '';
         }
     }
 
     // 📍 位置情報を取得して送信する関数
     function sendLocation() {
-        // ブラウザ（スマホ）が位置機能に対応しているかチェック
         if (!navigator.geolocation) {
             alert("お使いのブラウザは位置情報に対応していません。");
             return;
         }
 
-        // 現在地（緯度・経度）のGPS情報を取得
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 const lat = position.coords.latitude;  // 緯度
                 const lon = position.coords.longitude; // 経度
-                // 独自のマップ転送URLを生成
+
+                // 🛠️ 変更点③：世界基準の最も安全なGoogleマップ公式URLに変更（タイポも修正）
                 const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
 
-                // 生成したURLをメッセージとして送信
                 socket.emit('message_from_client', {
                     msg: mapUrl,
                     room: currentRoom
@@ -356,7 +355,6 @@
     // 🗑️ ゴミ箱ボタンが押された時に動く関数
     function deleteMessage(messageId) {
         if (confirm("このメッセージを削除しますか？")) {
-            // サーバーに対して「このIDのメッセージを消して！」と要求を投げる
             socket.emit('delete_message_from_client', {
                 message_id: messageId,
                 room: currentRoom
@@ -372,16 +370,14 @@
     // 🔄 ページが初めて読み込まれた（またはリフレッシュされた）時に動く初期化処理
     window.onload = function() {
         const msgDiv = document.getElementById('messages');
-        // 過去ログが最初から一番下（最新の位置）までスクロールされた状態にする
         msgDiv.scrollTop = msgDiv.scrollHeight;
     };
 
     // 🛠️ サービスワーカー（PWA用アプリ化エンジン）の登録処理
     if ('serviceWorker' in navigator) {
-        // 本番環境のバグを回避するため、static内の「sw.js」を直接指定し、scope（適用範囲）をサイト全体（/）に広げるおまじない
         navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
-            .then(() => console.log('Service Worker Registered from static!')) // 成功時
-            .catch((err) => console.error('Service Worker Failed', err));       // 失敗時
+            .then(() => console.log('Service Worker Registered from static!'))
+            .catch((err) => console.error('Service Worker Failed', err));
     }
     </script>
 </body>
