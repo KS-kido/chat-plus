@@ -35,8 +35,10 @@
         .app-container {
             display: flex;
             flex-direction: column;
-            height: 100dvh; /* dvh：スマホのキーボードが出ても画面が潰れない「動的高さ」 */
+            height: 100vh; /* dvhから通常のvhに戻し、全体を確実に画面内に収めます */
+            height: -webkit-fill-available; /* モバイルSafari/Chrome特有の高さバグ対策 */
             background-color: var(--line-blue);
+            position: relative;
         }
 
         /* 🏷️ 上部ヘッダー（部屋名や戻るボタン） */
@@ -157,66 +159,61 @@
         /* ⌨️ 下部の入力エリア全体 */
         .input-area {
             background: white;
-            /* env(safe-area-inset-bottom)で、iPhone下部のホームバーとの被りを自動回避 */
+            /* 左右と上にしっかり余白をとり、下側はセーフエリア（ナビゲーションバー）を自動計算 */
             padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
             display: flex;
             align-items: center;
             border-top: 1px solid #ddd;
-        }
-
-        /* 📍 位置情報ボタン */
-        .geo-btn {
-            background: none;
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            padding: 0 10px 0 5px;
-            outline: none;
-            transition: transform 0.1s;
-        }
-
-            /* ボタンを押した時にちょっと小さくして「ポチッ」とした感覚を出す */
-            .geo-btn:active {
-                transform: scale(0.85);
+            /* 🔔 ここを追加：入力欄が画面外に潰されたり押し出されたりするのを絶対に防ぐおまじない */
+            flex-shrink: 0;
+            /* 📍 位置情報ボタン */
+            .geo-btn {
+                background: none;
+                border: none;
+                font-size: 22px;
+                cursor: pointer;
+                padding: 0 10px 0 5px;
+                outline: none;
+                transition: transform 0.1s;
             }
-
-        /* ✏️ 文字の入力欄 */
-        #input_msg {
-            flex: 1;
-            border: 1px solid #eee;
-            background: #f0f0f0;
-            padding: 10px 15px;
-            border-radius: 25px; /* 丸っこい入力欄 */
-            font-size: 16px;
-            outline: none;
-        }
-
-        /* 🚀 送信ボタン */
-        .send-btn {
-            color: #007aff;
-            font-weight: bold;
-            padding: 0 15px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 16px;
-        }
-
-        /* 🗑️ メッセージ削除（ゴミ箱）ボタン */
-        .delete-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0 5px;
-            opacity: 0.5; /* 普段は薄っすら表示 */
-            outline: none;
-        }
-
-            /* ゴミ箱にマウスを乗せたら（またはタップしたら）クッキリ表示 */
-            .delete-btn:hover {
-                opacity: 1;
+                /* ボタンを押した時にちょっと小さくして「ポチッ」とした感覚を出す */
+                .geo-btn:active {
+                    transform: scale(0.85);
+                }
+            /* ✏️ 文字の入力欄 */
+            #input_msg {
+                flex: 1;
+                border: 1px solid #eee;
+                background: #f0f0f0;
+                padding: 10px 15px;
+                border-radius: 25px; /* 丸っこい入力欄 */
+                font-size: 16px;
+                outline: none;
             }
+            /* 🚀 送信ボタン */
+            .send-btn {
+                color: #007aff;
+                font-weight: bold;
+                padding: 0 15px;
+                cursor: pointer;
+                border: none;
+                background: none;
+                font-size: 16px;
+            }
+            /* 🗑️ メッセージ削除（ゴミ箱）ボタン */
+            .delete-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+                padding: 0 5px;
+                opacity: 0.5; /* 普段は薄っすら表示 */
+                outline: none;
+            }
+                /* ゴミ箱にマウスを乗せたら（またはタップしたら）クッキリ表示 */
+                .delete-btn:hover {
+                    opacity: 1;
+                }
     </style>
 </head>
 <body>
