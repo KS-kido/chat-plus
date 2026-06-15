@@ -29,28 +29,48 @@
             background-color: #ffffff;
             border-bottom: 1px solid #eee;
             display: flex;
+            flex-direction: column;
             gap: 8px;
         }
 
-            .search-area input {
-                flex-grow: 1;
-                padding: 8px 12px;
-                border: 1px solid #ddd;
-                border-radius: 20px; /* 丸みをつけてモダンに */
-                outline: none;
-                font-size: 14px;
-            }
+        .search-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
 
-            .search-area button {
-                padding: 8px 16px;
-                background-color: #2c3e50;
-                color: white;
-                border: none;
-                border-radius: 20px;
-                font-weight: bold;
-                cursor: pointer;
-                font-size: 14px;
-            }
+        .search-area input {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .search-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-area button {
+            flex: 1;
+            padding: 8px 12px;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        /* ボタンの色を機能ごとに分ける */
+        #search-room-btn {
+            background-color: #3498db;
+        }
+        /* 青：部屋検索 */
+        #search-msg-btn {
+            background-color: #2c3e50;
+        }
+        /* 紺：メッセージ検索 */
 
         /* 📋 検索結果エリア */
         #search-results-wrapper {
@@ -157,12 +177,17 @@
     </div>
 
     <div class="search-area">
-        <input type="text" id="search-input" placeholder="メッセージを検索...">
-        <button id="search-btn">検索</button>
+        <div class="search-input-wrapper">
+            <input type="text" id="search-input" placeholder="部屋名またはキーワードを入力...">
+        </div>
+        <div class="search-buttons">
+            <button id="search-room-btn">🚪 部屋を探す</button>
+            <button id="search-msg-btn">💬 発言を探す</button>
+        </div>
     </div>
 
     <div id="search-results-wrapper" style="display: none;">
-        <h5>🔍 検索結果 <button id="close-search" style="float: right; font-size: 12px; background: #ddd; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer;">閉じる</button></h5>
+        <h5>🔍 <span id="search-type-title">検索結果</span> <button id="close-search" style="float: right; font-size: 12px; background: #ddd; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer;">閉じる</button></h5>
         <div id="search-results-list">
         </div>
     </div>
@@ -217,50 +242,78 @@
     <a href="/logout" class="logout-btn">ログアウト</a>
 
     <script>
-        // 検索ボタンをクリックした時の処理
-        document.getElementById('search-btn').addEventListener('click', function() {
-            const query = document.getElementById('search-input').value.trim();
+        const searchInput = document.getElementById('search-input');
+        const wrapper = document.getElementById('search-results-wrapper');
+        const list = document.getElementById('search-results-list');
+        const typeTitle = document.getElementById('search-type-title');
+
+        // 🚪 1. 部屋検索ボタンを押した時
+        document.getElementById('search-room-btn').addEventListener('click', function () {
+            const query = searchInput.value.trim();
             if (!query) return;
 
-            // Python側の検索ルートに文字を投げる
-            fetch(`/search_messages?query=${encodeURIComponent(query)}`)
+            typeTitle.textContent = "部屋の検索結果";
+
+            fetch(`/search_rooms?query=${encodeURIComponent(query)}`)
                 .then(response => response.json())
                 .then(data => {
-                    const wrapper = document.getElementById('search-results-wrapper');
-                    const list = document.getElementById('search-results-list');
-                    list.innerHTML = ''; // 前回の結果をクリア
-
+                    list.innerHTML = '';
                     if (data.length === 0) {
-                        list.innerHTML = '<div style="color: gray; padding: 10px; font-size: 14px;">該当するメッセージが見つかりませんでした。</div>';
+                        list.innerHTML = '<div style="color: gray; padding: 10px; font-size: 14px;">該当するチャットルームが見つかりません。</div>';
                     } else {
-                        // 見つかったメッセージを1つずつ組み立て
-                        data.forEach(msg => {
-                            // クリックしたらそのチャットルームに飛べるようにリンクにする
+                        data.forEach(room => {
                             const a = document.createElement('a');
-                            a.href = `/chat/${encodeURIComponent(msg.room_id)}`;
+                            a.href = `/chat/${encodeURIComponent(room.name)}`;
                             a.className = 'search-item-link';
-
                             a.innerHTML = `
-                                <div class="search-item">
-                                    <div style="font-size: 12px; color: #007bff; font-weight: bold; margin-bottom: 2px;">🚪 部屋: ${msg.room_id}</div>
-                                    <strong>${msg.username}</strong> <span style="font-size: 11px; color: gray;">(${msg.timestamp})</span><br>
-                                    <div style="color: #333; margin-top: 4px; font-size: 14px;">${msg.content}</div>
-                                </div>
-                            `;
+                                    <div class="search-item">
+                                        <strong>🚪 ${room.name}</strong> ${room.is_private ? '<span style="color:#e74c3c; font-size:12px;">🔒</span>' : ''}<br>
+                                        <span style="font-size: 12px; color: gray;">カテゴリ: ${room.category}</span>
+                                    </div>
+                                `;
                             list.appendChild(a);
                         });
                     }
-                    wrapper.style.display = 'block'; // 検索結果エリアを表示
-                })
-                .catch(err => {
-                    console.error("検索エラー:", err);
+                    wrapper.style.display = 'block';
                 });
         });
 
-        // 閉じるボタンを押した時の処理
-        document.getElementById('close-search').addEventListener('click', function() {
-            document.getElementById('search-results-wrapper').style.display = 'none';
-            document.getElementById('search-input').value = '';
+        // 💬 2. 発言（メッセージ）検索ボタンを押した時
+        document.getElementById('search-msg-btn').addEventListener('click', function () {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            typeTitle.textContent = "発言の検索結果";
+
+            fetch(`/search_messages?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    list.innerHTML = '';
+                    if (data.length === 0) {
+                        list.innerHTML = '<div style="color: gray; padding: 10px; font-size: 14px;">該当するメッセージが見つかりません。</div>';
+                    } else {
+                        data.forEach(msg => {
+                            const a = document.createElement('a');
+                            a.href = `/chat/${encodeURIComponent(msg.room_id)}`;
+                            a.className = 'search-item-link';
+                            a.innerHTML = `
+                                    <div class="search-item">
+                                        <div style="font-size: 12px; color: #3498db; font-weight: bold; margin-bottom: 2px;">🚪 部屋: ${msg.room_id}</div>
+                                        <strong>${msg.username}</strong> <span style="font-size: 11px; color: gray;">(${msg.timestamp})</span><br>
+                                        <div style="color: #333; margin-top: 4px; font-size: 14px;">${msg.content}</div>
+                                    </div>
+                                `;
+                            list.appendChild(a);
+                        });
+                    }
+                    wrapper.style.display = 'block';
+                });
+        });
+
+        // ❌ 閉じるボタン
+        document.getElementById('close-search').addEventListener('click', function () {
+            wrapper.style.display = 'none';
+            searchInput.value = '';
         });
     </script>
 </body>

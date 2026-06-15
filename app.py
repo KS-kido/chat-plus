@@ -290,6 +290,36 @@ def search_messages():
     return jsonify(search_data)
 
 
+# =======================================================
+# 🚪 チャットルーム検索処理（追加）
+# =======================================================
+@app.route('/search_rooms')
+def search_rooms():
+    # 🔒 ログインチェック
+    if 'login_id' not in session:
+        return jsonify([]), 401
+
+    # 🔍 画面から検索ワードを取得
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify([]) # 空っぽなら何も返さない
+        
+    # 📝 Roomテーブルから、入力された文字が「部屋名」に含まれるものを検索
+    # ilike を使うことで、大文字・小文字、全角・半角を区別せずに検索できます
+    results = Room.query.filter(Room.name.ilike(f'%{query}%')).all()
+    
+    # 🔄 JavaScriptへ渡すためにデータを形にする
+    from flask import jsonify
+    room_data = []
+    for room in results:
+        room_data.append({
+            'name': room.name,
+            'category': room.category,
+            'is_private': True if room.password else False  # 🔒マーク用
+        })
+        
+    return jsonify(room_data)
+
 
 # 💬 各チャットルーム画面（ここが削れてしまっていました！）
 @app.route('/chat/<room_name>', methods=['GET', 'POST'])
