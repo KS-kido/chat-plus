@@ -108,26 +108,54 @@
     </div>
 
     <div class="create-area">
-        <form action="/create_room" method="POST">
-            <input type="text" name="room_name" placeholder="新しい部屋の名前" required>
-            <input type="password" name="room_password" placeholder="（任意）パスワード">
-            <button type="submit">作成</button>
+        <form action="/create_room" method="POST" style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 10px;">
+                <input type="text" name="room_name" placeholder="新しい部屋の名前" required style="width: 50%;">
+                <input type="password" name="room_password" placeholder="（任意）パスワード" style="width: 50%;">
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="font-size: 14px; color: #555;">カテゴリ:</label>
+                <select name="room_category" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex-grow: 1;">
+                    <option value="未分類">未分類</option>
+                    <option value="雑談">雑談</option>
+                    <option value="趣味">趣味</option>
+                    <option value="仕事・勉強">仕事・勉強</option>
+                    <option value="連絡・告知">連絡・告知</option>
+                </select>
+                <button type="submit" style="padding: 8px 20px;">作成</button>
+            </div>
         </form>
     </div>
 
     <div class="room-list">
-        {% for room in rooms %}
+        {% set categories = ['雑談', '趣味', '仕事・勉強', '連絡・告知', '未分類'] %}
+
+        {% for cat in categories %}
+        {# 💡 selectattrを使い、現在のカテゴリに一致する部屋だけをフィルタリングしてリスト化します #}
+        {% set cat_rooms = rooms | selectattr('category', 'equalto', cat) | list %}
+
+        {# 💡 そのカテゴリの部屋が1つ以上存在する場合のみ見出しと部屋を表示 #}
+        {% if cat_rooms | length > 0 %}
+        <div style="background-color: #f1f3f5; padding: 5px 15px; font-size: 13px; font-weight: bold; color: #666; border-bottom: 1px solid #eee; margin-top: 10px;">
+            📌 {{ cat }}
+        </div>
+
+        {% for room in cat_rooms %}
         <a href="/chat/{{ room.name }}" class="room-item">
-            <div class="room-icon">{{ room.name[0] }}</div>
             <div class="room-info">
-                <div class="room-name">{{ room.name }}</div>
-                <div class="room-msg">タップしてトークを開始</div>
+                <div class="room-name">
+                    {{ room.name }}
+                    {% if room.password %}
+                    <span style="font-size: 12px; color: #e74c3c;">🔒</span>
+                    {% endif %}
+                </div>
             </div>
         </a>
+        {% endfor %}
+        {% endif %}
         {% endfor %}
     </div>
 
     <a href="/logout" class="logout-btn">ログアウト</a>
-
 </body>
 </html>
