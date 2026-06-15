@@ -255,6 +255,42 @@ def create_room():
         db.session.commit()
     return redirect(url_for('chat_list'))
 
+# =======================================================
+# 🔍 チャットメッセージ検索処理（追加）
+# =======================================================
+@app.route('/search_messages')
+def search_messages():
+    # 🔒 セッションによるログインチェック（既存の仕組みに合わせる）
+    if 'login_id' not in session:
+        return jsonify([]), 401
+
+    # 🔍 画面から検索ワードを取得
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify([]) # 空っぽなら何も返さない
+        
+    # 📝 PostgreSQLのデータベースからメッセージを検索（大文字・小文字を区別しないilikeを使用）
+    results = Message.query.filter(Message.content.ilike(f'%{query}%')).order_by(Message.created_at.desc()).all()
+    
+    # 🔄 JavaScriptへ渡すためにデータを形にする
+    from flask import jsonify
+    search_data = []
+    for msg in results:
+        # メッセージの作成日時をフォーマット（created_atがあれば変換）
+        time_str = msg.created_at.strftime('%Y-%m-%d %H:%M') if msg.created_at else ''
+        
+        search_data.append({
+            'id': msg.id,
+            'content': msg.content,
+            'username': msg.user.display_name if msg.user else '不明なユーザー',
+            'timestamp': time_str,
+            'room_id': msg.room # 部屋の識別子（roomカラム）
+        })
+        
+    return jsonify(search_data)
+
+
+
 # 💬 各チャットルーム画面（ここが削れてしまっていました！）
 @app.route('/chat/<room_name>', methods=['GET', 'POST'])
 def chat(room_name):
