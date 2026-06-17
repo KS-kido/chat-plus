@@ -19,7 +19,7 @@ app.config['SECRET_KEY'] = 'secret!'
 # このプログラムファイル（app.py）が置いてある場所の絶対パスを自動取得
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Render（本番環境）にセットされているPostgreSQLの接続URLを取得
+# RenderやDocker（本番環境）にセットされているPostgreSQLの接続URLを取得
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
@@ -27,10 +27,13 @@ if database_url:
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    # 本番データベースとの通信を安全に暗号化（SSL通信を強制）するための設定
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        "connect_args": {"sslmode": "require"} 
-    }
+    
+    # 💡 Xserver VPSのDocker環境ではSSL暗号化が不要なため、RenderのときだけSSLを強制する設定にします
+    #（環境変数に「RENDER」という文字が入っていない場合は、SSLオプションを付けないようにします）
+    if os.environ.get('RENDER'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            "connect_args": {"sslmode": "require"} 
+        }
 else:
     # 💻 ローカル（PostgreSQLに切り替え）
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:syana116@localhost:5432/chat_db'
