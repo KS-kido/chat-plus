@@ -327,30 +327,44 @@
     }
 
     // 📍 位置情報を取得して送信する関数
-    function sendLocation() {
-        if (!navigator.geolocation) {
-            alert("お使いのブラウザは位置情報に対応していません。");
-            return;
+        // 📍 修正後の位置情報送信関数
+        function sendLocation() {
+            if (!navigator.geolocation) {
+                alert("お使いのブラウザは位置情報に対応していません。");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    // 💡 正しいGoogleマップのURL形式に修正
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+
+                    socket.emit('message_from_client', {
+                        msg: mapUrl,
+                        room: currentRoom
+                    });
+                },
+                function (error) {
+                    alert("位置情報の取得に失敗しました。");
+                }
+            );
         }
 
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;  // 緯度
-                const lon = position.coords.longitude; // 経度
+        // 📡 受信時の判定（URLを修正）
+        socket.on('message_from_server', function (data) {
+            const msgDiv = document.getElementById('messages');
 
-                // 🛠️ 変更点③：世界基準の最も安全なGoogleマップ公式URLに変更（タイポも修正）
-                // 正しいGoogleマップのURL形式に修正
-                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-
-                socket.emit('message_from_client', {
-                    msg: mapUrl,
-                    room: currentRoom
-                });
-            },
-            function(error) {
-                alert("位置情報の取得に失敗しました。ブラウザの位置情報許可設定を確認してください。");
+            // 💡 GoogleマップのURLを判定
+            let displayContent = data.msg;
+            if (data.msg.includes('google.com/maps/search/')) {
+                displayContent = `<a href="${data.msg}" target="_blank">📍 現在地を共有しました</a>`;
             }
-        );
+
+            // ...以下、以前の処理通り
+        });
     }
 
     // 🗑️ ゴミ箱ボタンが押された時に動く関数
