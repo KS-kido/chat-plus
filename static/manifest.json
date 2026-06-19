@@ -1,23 +1,17 @@
 {
   "name": "Chat Plus",
   "short_name": "ChatPlus",
-  /* アプリをホーム画面から起動したときに、最初に開くページ（/ = トップページ） */
   "start_url": "/",
-  /* standalone：上のURLバーや下のボタンを隠し、普通のスマホアプリと同じ全画面で見せる設定 */
   "display": "standalone",
-  /* アプリ起動時のスプラッシュ画面（一瞬出る起動画面）の背景色 */
   "background_color": "#7494C0",
-  /* スマホの最上部（電波マークや時計があるバー）の背景色 */
   "theme_color": "#35495e",
   "icons": [
     {
-      /* ✨ 修正：頭に「/」をつけることで、「自分のサイトのstaticフォルダ内のicon.png」を自動で見に行きます */
       "src": "/static/icon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      /* ✨ 修正：こちらも同様に相対パスに修正します */
       "src": "/static/icon.png",
       "sizes": "512x512",
       "type": "image/png"
