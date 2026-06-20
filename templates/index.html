@@ -282,8 +282,9 @@
 
         let displayContent = data.msg;
 
-        // 🛠️ 変更点②：リアルタイム受信時のGoogle公式URL判定（https://www.google.com/maps）
-        if (data.msg.startsWith('https://www.google.com/maps')) {
+        // 🛠️ Google公式URLまたはマップURLの判定（過去のパターンを網羅してリンク化）
+        if (data.msg.startsWith('https://www.google.com/maps') ||
+            data.msg.includes('http://googleusercontent.com/maps.google.com/')) {
             displayContent = `<a href="${data.msg}" target="_blank" class="map-link">📍 現在地を共有しました</a>`;
         }
 
@@ -327,44 +328,29 @@
     }
 
     // 📍 位置情報を取得して送信する関数
-        // 📍 修正後の位置情報送信関数
-        function sendLocation() {
-            if (!navigator.geolocation) {
-                alert("お使いのブラウザは位置情報に対応していません。");
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                function (position) {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-
-                    // 💡 正しいGoogleマップのURL形式に修正
-                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-
-                    socket.emit('message_from_client', {
-                        msg: mapUrl,
-                        room: currentRoom
-                    });
-                },
-                function (error) {
-                    alert("位置情報の取得に失敗しました。");
-                }
-            );
+    function sendLocation() {
+        if (!navigator.geolocation) {
+            alert("お使いのブラウザは位置情報に対応していません。");
+            return;
         }
 
-        // 📡 受信時の判定（URLを修正）
-        socket.on('message_from_server', function (data) {
-            const msgDiv = document.getElementById('messages');
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
 
-            // 💡 GoogleマップのURLを判定
-            let displayContent = data.msg;
-            if (data.msg.includes('google.com/maps/search/')) {
-                displayContent = `<a href="${data.msg}" target="_blank">📍 現在地を共有しました</a>`;
+                // 💡 正しいGoogleマップのURL形式
+                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+
+                socket.emit('message_from_client', {
+                    msg: mapUrl,
+                    room: currentRoom
+                });
+            },
+            function (error) {
+                alert("位置情報の取得に失敗しました。");
             }
-
-            // ...以下、以前の処理通り
-        });
+        );
     }
 
     // 🗑️ ゴミ箱ボタンが押された時に動く関数
@@ -385,7 +371,9 @@
     // 🔄 ページが初めて読み込まれた（またはリフレッシュされた）時に動く初期化処理
     window.onload = function() {
         const msgDiv = document.getElementById('messages');
-        msgDiv.scrollTop = msgDiv.scrollHeight;
+        if (msgDiv) {
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+        }
     };
 
     // 🛠️ サービスワーカー（PWA用アプリ化エンジン）の登録処理
