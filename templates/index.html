@@ -21,42 +21,41 @@
             --bg-gray: #f8f8f8;
         }
 
-        /* 📱 画面全体の初期化（スマホ特有の不要なスクロールを徹底的に防ぐ） */
+        /* 📱 画面全体の初期化 */
         body, html {
             margin: 0;
             padding: 0;
-            height: 100vh; /* 確実に画面に収める */
-            height: -webkit-fill-available; /* スマホブラウザ特有の高さ計算バグを強力に補正 */
+            height: 100vh;
+            height: -webkit-fill-available;
             width: 100%;
-            overflow: hidden; /* 画面全体は固定し、メッセージエリアだけをスクロールさせる */
+            overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
         }
 
-        /* 📦 アプリ全体のコンテナ（縦並びのレイアウト） */
+        /* 📦 アプリ全体のコンテナ */
         .app-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            height: -webkit-fill-available; /* 最外枠の高さをスマホのリアルな表示領域に固定 */
+            height: -webkit-fill-available;
             background-color: var(--line-blue);
             position: relative;
         }
 
-        /* 🏷️ 上部ヘッダー（部屋名や戻るボタン） */
+        /* 🏷️ 上部ヘッダー */
         .header {
             background: var(--header-dark);
             color: white;
-            /* env(safe-area-inset-top)で、iPhoneのノッチ（前髪）を避ける余白を自動計算 */
             padding: env(safe-area-inset-top) 15px 10px 15px;
             display: flex;
             align-items: center;
             min-height: 50px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 100;
-            flex-shrink: 0; /* ヘッダーが潰れるのを防ぐ */
+            flex-shrink: 0;
         }
 
-        /* ↩️ 戻るボタン（＜） */
+        /* ↩️ 戻るボタン */
         .back-btn {
             text-decoration: none;
             color: white;
@@ -64,28 +63,28 @@
             margin-right: 15px;
         }
 
-        /* 💬 メッセージ表示エリア（ここだけがスクロールする） */
+        /* 💬 メッセージ表示エリア */
         #messages {
-            flex: 1; /* 残りの画面の高さをすべて使い切る */
-            overflow-y: auto; /* 縦スクロールを許可 */
+            flex: 1;
+            overflow-y: auto;
             padding: 15px;
             display: flex;
             flex-direction: column;
-            -webkit-overflow-scrolling: touch; /* iOSでのスクロールをなめらかにする */
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* 📦 吹き出しの外枠（共通） */
+        /* 📦 吹き出しの外枠 */
         .msg-box {
             margin-bottom: 12px;
-            max-width: 85%; /* タイムスタンプが横に並ぶスペースを確保 */
+            max-width: 85%;
             display: flex;
             flex-direction: column;
         }
 
-        /* 🔗 吹き出しと時間・ゴミ箱を横並びにするためのコンテナ */
+        /* 🔗 吹き出しと時間・ゴミ箱のコンテナ */
         .msg-row {
             display: flex;
-            align-items: flex-end; /* 下揃えにすることで、LINEのように時間の文字が吹き出しの底辺に並ぶ */
+            align-items: flex-end;
         }
 
         /* 📝 メッセージのテキスト部分 */
@@ -93,43 +92,40 @@
             padding: 10px 14px;
             font-size: 16px;
             line-height: 1.4;
-            word-wrap: break-word; /* 長い英数字が来ても自動で改行する */
+            word-wrap: break-word;
             position: relative;
         }
 
-            /* 📍 吹き出しの中の位置情報リンクの装飾 */
             .text a {
                 color: #0055aa;
                 text-decoration: underline;
                 font-weight: bold;
             }
 
-        /* 🕒 タイムスタンプのデザイン（XX:XX） */
+        /* 🕒 タイムスタンプ */
         .timestamp {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.8); /* 背景の青に馴染む白っぽい色 */
-            margin: 0 5px; /* 吹き出しとの隙間 */
-            white-space: nowrap; /* 時間が途中で改行されるのを防ぐ */
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0 5px;
+            white-space: nowrap;
         }
 
-        /* 👤 相手のメッセージ（左側配置） */
+        /* 👤 相手のメッセージ */
         .other-msg {
             align-self: flex-start;
         }
 
-            /* 相手の時は [吹き出し] [時間] の順番（通常の左から右） */
             .other-msg .msg-row {
                 flex-direction: row;
             }
 
-            /* 相手の時間の文字色は、白背景で見えやすいように少し暗めのグレーに */
             .other-msg .timestamp {
                 color: #666666;
             }
 
             .other-msg .text {
                 background: white;
-                border-radius: 18px 18px 18px 4px; /* 左下だけ角を尖らせる */
+                border-radius: 18px 18px 18px 4px;
             }
 
             .other-msg .username {
@@ -139,33 +135,32 @@
                 margin-left: 5px;
             }
 
-        /* 🧒 自分のメッセージ（右側配置） */
+        /* 🧒 自分のメッセージ */
         .my-msg {
             align-self: flex-end;
         }
 
-            /* 自分の時は [時間] [吹き出し] の順番にするためにリバース（逆転）させる */
             .my-msg .msg-row {
                 flex-direction: row-reverse;
             }
 
             .my-msg .text {
                 background: var(--line-green);
-                border-radius: 18px 18px 4px 18px; /* 右下だけ角を尖らせる */
+                border-radius: 18px 18px 4px 18px;
             }
 
             .my-msg .username {
-                display: none; /* 自分の名前はわざわざ表示しない */
+                display: none;
             }
 
-        /* ⌨️ 下部の入力エリア全体 */
+        /* ⌨️ 下部の入力エリア */
         .input-area {
             background: white;
             padding: 10px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
             display: flex;
             align-items: center;
             border-top: 1px solid #ddd;
-            flex-shrink: 0; /* 上の要素に押し出されて画面外に潰れるのを絶対に防ぐ */
+            flex-shrink: 0;
             z-index: 110;
         }
 
@@ -180,7 +175,7 @@
             transition: transform 0.1s;
             flex-shrink: 0;
         }
-            /* ボタンを押した時にちょっと小さくして「ポチッ」とした感覚を出す */
+
             .geo-btn:active {
                 transform: scale(0.85);
             }
@@ -191,7 +186,7 @@
             border: 1px solid #eee;
             background: #f0f0f0;
             padding: 10px 15px;
-            border-radius: 25px; /* 丸っこい入力欄 */
+            border-radius: 25px;
             font-size: 16px;
             outline: none;
         }
@@ -208,18 +203,18 @@
             flex-shrink: 0;
         }
 
-        /* 🗑️ メッセージ削除（ゴミ箱）ボタン */
+        /* 🗑️ メッセージ削除ボタン */
         .delete-btn {
             background: none;
             border: none;
             cursor: pointer;
             font-size: 14px;
             padding: 0 5px;
-            opacity: 0.5; /* 普段は薄っすら表示 */
+            opacity: 0.5;
             outline: none;
             flex-shrink: 0;
         }
-            /* ゴミ箱にマウスを乗せたら（またはタップしたら）クッキリ表示 */
+
             .delete-btn:hover {
                 opacity: 1;
             }
@@ -244,7 +239,7 @@
                     {% endif %}
 
                     <div class="text">
-                        {% if msg.content.startswith('https://www.google.com/maps') %}
+                        {% if msg.content.startswith('http://googleusercontent.com/maps.google.com/') %}
                         <a href="{{ msg.content }}" target="_blank">📍 現在地を共有しました</a>
                         {% else %}
                         {{ msg.content }}
@@ -268,12 +263,12 @@
     const currentRoom = "{{ room_name }}"; // 現在のチャットルーム名
     const myLoginId = "{{ session['login_id'] }}"; // ログインしている自分のID
 
-    // 🔄 サーバーに接続が成功したら、すぐにこのチャットルーム（部屋）に入る（Joinする）
+    // 🔄 サーバーに接続が成功したらチャットルームに入る
     socket.on('connect', () => {
         socket.emit('join', { room: currentRoom });
     });
 
-    // 📡 サーバーから「新しいメッセージ」が送られてきた時のリアルタイム受信処理
+    // 📡 サーバーから「新しいメッセージ」を受信した時の処理
     socket.on('message_from_server', function (data) {
         const msgDiv = document.getElementById('messages');
 
@@ -282,9 +277,8 @@
 
         let displayContent = data.msg;
 
-        // 🛠️ Google公式URLまたはマップURLの判定（過去のパターンを網羅してリンク化）
-        if (data.msg.startsWith('https://www.google.com/maps') ||
-            data.msg.includes('http://googleusercontent.com/maps.google.com/')) {
+        // 🔗 GoogleマップURLの判定とリンク化
+        if (data.msg.startsWith('http://googleusercontent.com/maps.google.com/')) {
             displayContent = `<a href="${data.msg}" target="_blank" class="map-link">📍 現在地を共有しました</a>`;
         }
 
@@ -307,7 +301,7 @@
         msgDiv.scrollTop = msgDiv.scrollHeight;
     });
 
-    // 📡 サーバーから「メッセージが削除されたよ」という通知が届いた時の処理
+    // 📡 サーバーから「メッセージ削除通知」が届いた時の処理
     socket.on('message_deleted_from_server', function (data) {
         const targetMsg = document.getElementById(`msg-${data.message_id}`);
         if (targetMsg) {
@@ -338,9 +332,7 @@
             function (position) {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-
-                // 💡 正しいGoogleマップのURL形式
-                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+                const mapUrl = `http://googleusercontent.com/maps.google.com/${lat},${lon}`;
 
                 socket.emit('message_from_client', {
                     msg: mapUrl,
@@ -353,7 +345,7 @@
         );
     }
 
-    // 🗑️ ゴミ箱ボタンが押された時に動く関数
+    // 🗑️ ゴミ箱ボタンの関数
     function deleteMessage(messageId) {
         if (confirm("このメッセージを削除しますか？")) {
             socket.emit('delete_message_from_client', {
@@ -363,12 +355,12 @@
         }
     }
 
-    // ⌨️ 入力欄でEnterキーが押されたら送信ボタンの代わりに `send()` を動かす設定
+    // ⌨️ Enterキーで送信
     document.getElementById('input_msg').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') send();
     });
 
-    // 🔄 ページが初めて読み込まれた（またはリフレッシュされた）時に動く初期化処理
+    // 🔄 初期スクロール位置調整
     window.onload = function() {
         const msgDiv = document.getElementById('messages');
         if (msgDiv) {
@@ -376,7 +368,7 @@
         }
     };
 
-    // 🛠️ サービスワーカー（PWA用アプリ化エンジン）の登録処理
+    // 🛠️ サービスワーカーの登録
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
             .then(() => console.log('Service Worker Registered from static!'))
